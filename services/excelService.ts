@@ -1,11 +1,11 @@
 
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import QRCode from 'qrcode';
 import { MasterDataRow, ChecklistData } from '../types';
 
 /**
- * Parses an uploaded Excel file into JSON data using XLSX for performance.
+ * Parses an uploaded Excel file into JSON data using XLSX 0.18.5.
  */
 export const parseMasterExcel = (file: File): Promise<MasterDataRow[]> => {
   return new Promise((resolve, reject) => {
@@ -40,8 +40,8 @@ export const downloadChecklistExcel = async (data: ChecklistData, fileName: stri
 
   // 1. Column Widths (Adjusted for A4 full width)
   worksheet.columns = [
-    { width: 14 }, { width: 18 }, { width: 14 }, { width: 18 },
-    { width: 16 }, { width: 16 }, { width: 16 }, { width: 18 }
+    { width: 15 }, { width: 20 }, { width: 15 }, { width: 20 },
+    { width: 12 }, { width: 12 }, { width: 12 }, { width: 20 }
   ];
 
   // 2. Styles
@@ -71,7 +71,7 @@ export const downloadChecklistExcel = async (data: ChecklistData, fileName: stri
   };
 
   // 3. Populate Rows
-  
+
   // Row 1: Title and MGMT
   const row1 = worksheet.getRow(1);
   row1.height = 120;
@@ -79,40 +79,37 @@ export const downloadChecklistExcel = async (data: ChecklistData, fileName: stri
   const titleCell = worksheet.getCell('A1');
   titleCell.value = '상품/임가/경,중 체크리스트';
   titleCell.font = { bold: true, size: 32, name: 'Malgun Gothic' };
-  titleCell.alignment = { horizontal: 'left', vertical: 'bottom' };
+  titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
   const mgmtCell = worksheet.getCell('H1');
   mgmtCell.value = `관리번호: ${data.mgmtNumber}`;
-  mgmtCell.font = { size: 22, name: 'Malgun Gothic', underline: true };
+  mgmtCell.font = { size: 22, name: 'Malgun Gothic', underline: true, bold: true };
   mgmtCell.alignment = { horizontal: 'right', vertical: 'bottom' };
 
-  // Row 2: Header Border Line (Visual distinction)
+  // Row 2: Border Line
   worksheet.getRow(2).height = 10;
   worksheet.mergeCells('A2:H2');
   worksheet.getCell('A2').border = { bottom: { style: 'medium' } };
 
-  // Row 3: Inspect Info (Spacious for QR and Hand-writing)
+  // Row 3: Inspect Info (Spacious for QR)
   const row3 = worksheet.getRow(3);
-  row3.height = 160; 
-  
-  const infoStyle: Partial<ExcelJS.Style> = { font: { size: 16, name: 'Malgun Gothic' }, alignment: { vertical: 'middle' } };
-  
-  worksheet.getCell('A3').value = `점검일자:  ${yyyy_mm_dd}`; 
-  // worksheet.getCell('A3').font = { size: 11, italic: true, name: 'Malgun Gothic' };
-  // worksheet.getCell('A3').alignment = { horizontal: 'right', vertical: 'middle' };
- 
+  row3.height = 180;
+
+  const infoStyle: Partial<ExcelJS.Style> = { font: { size: 18, name: 'Malgun Gothic' }, alignment: { vertical: 'middle' } };
+
+  worksheet.getCell('A3').value = `점검일자:  ${yyyy_mm_dd}`;
+  // worksheet.getCell('A3').style = infoStyle;
+  worksheet.mergeCells('A3:B3');
+
   worksheet.getCell('C3').value = '정비자:';
-  // worksheet.getCell('C3').font = { size: 11, italic: true, name: 'Malgun Gothic' };
-  // worksheet.getCell('C3').alignment = { horizontal: 'right', vertical: 'middle' };
-  
+  // worksheet.getCell('C3').style = infoStyle;
+
   worksheet.getCell('E3').value = 'QC:';
-  // worksheet.getCell('E3').font = { size: 11, italic: true, name: 'Malgun Gothic' };
-  // worksheet.getCell('E3').alignment = { horizontal: 'right', vertical: 'middle' };
-  
+  // worksheet.getCell('E3').style = infoStyle;
 
   // Row 5: Product Code & Name
   const row5 = worksheet.getRow(5);
-  row5.height = 90; // Matching h-16 in web (approx 48px)
+  row5.height = 90;
   worksheet.getCell('A5').value = '상품코드';
   worksheet.getCell('A5').style = headerLabelStyle;
   worksheet.getCell('B5').value = data.productCode;
@@ -122,90 +119,80 @@ export const downloadChecklistExcel = async (data: ChecklistData, fileName: stri
 
   worksheet.mergeCells('D5:H5');
   for (let c = 4; c <= 8; c++) {
-    worksheet.getRow(5).getCell(c).border = thinBorder;
+    worksheet.getCell(5, c).border = thinBorder;
   }
   const prodNameCell = worksheet.getCell('D5');
   prodNameCell.value = data.productName;
   prodNameCell.style = leftAlignDataValueStyle;
 
-  // Row 6: Manufacturer, Model, Year, Usage
+  // Row 6: Main Info
   const row6 = worksheet.getRow(6);
   row6.height = 90;
-  const row6Labels = ['제조사', '모델', '년식', '사용시간'];
-  const row6Keys = ['manufacturer', 'model', 'year', 'usageTime'];
-  
   worksheet.getCell('A6').value = '제조사';
   worksheet.getCell('A6').style = headerLabelStyle;
   worksheet.getCell('B6').value = data.manufacturer;
   worksheet.getCell('B6').style = dataValueStyle;
-  
   worksheet.getCell('C6').value = '모델';
   worksheet.getCell('C6').style = headerLabelStyle;
   worksheet.getCell('D6').value = data.model;
   worksheet.getCell('D6').style = dataValueStyle;
-  
   worksheet.getCell('E6').value = '년식';
   worksheet.getCell('E6').style = headerLabelStyle;
   worksheet.getCell('F6').value = data.year;
   worksheet.getCell('F6').style = dataValueStyle;
-  
   worksheet.getCell('G6').value = '사용시간';
   worksheet.getCell('G6').style = headerLabelStyle;
-  worksheet.getCell('H6').value = ''; // Placeholder
+  worksheet.getCell('H6').value = '';
   worksheet.getCell('H6').style = dataValueStyle;
 
-  // Row 7: Asset, Vehicle, Serial
+  // Row 7: Asset/Serial Info
   const row7 = worksheet.getRow(7);
   row7.height = 90;
   worksheet.getCell('A7').value = '자산번호';
   worksheet.getCell('A7').style = headerLabelStyle;
   worksheet.getCell('B7').value = data.assetNumber;
   worksheet.getCell('B7').style = dataValueStyle;
-  
   worksheet.getCell('C7').value = '차량번호';
   worksheet.getCell('C7').style = headerLabelStyle;
   worksheet.getCell('D7').value = data.vehicleNumber;
   worksheet.getCell('D7').style = dataValueStyle;
-  
   worksheet.getCell('E7').value = '차대번호';
   worksheet.getCell('E7').style = headerLabelStyle;
 
   worksheet.mergeCells('F7:H7');
   for (let c = 6; c <= 8; c++) {
-    worksheet.getRow(7).getCell(c).border = thinBorder;
+    worksheet.getCell(7, c).border = thinBorder;
   }
   const serialCell = worksheet.getCell('F7');
   serialCell.value = data.serialNumber;
   serialCell.style = leftAlignDataValueStyle;
 
-  // Row 9: Footer
+  // Row 9: Legend Footer
   const row9 = worksheet.getRow(9);
-  row9.height = 90;
+  row9.height = 120;
   worksheet.getCell('A9').value = '물류:';
-  worksheet.getCell('C9').value = '건설:';
   worksheet.getCell('A9').style = infoStyle;
+  worksheet.getCell('C9').value = '건설:';
   worksheet.getCell('C9').style = infoStyle;
   worksheet.mergeCells('F9:H9');
   const legendCell = worksheet.getCell('F9');
   legendCell.value = '양호: o  보통: △  불량: x  해당없음: N';
-  legendCell.font = { size: 11, italic: true, name: 'Malgun Gothic' };
+  legendCell.font = { size: 14,  name: 'Malgun Gothic' };
   legendCell.alignment = { horizontal: 'right', vertical: 'middle' };
 
   // 4. Generate & Insert QR Code
   try {
-    const qrDataUrl = await QRCode.toDataURL(data.mgmtNumber, { margin: 1, width: 200 });
+    const qrDataUrl = await QRCode.toDataURL(data.mgmtNumber, { margin: 1, width: 300 });
     const qrImageId = workbook.addImage({
       base64: qrDataUrl,
       extension: 'png',
-    }); 
-     
-    // This provides a clean fit under the mgmt number.
-    const IMAGE_SIZE_PX = 90; 
+    });
 
+    // Position QR in top right area of row 3
     worksheet.addImage(qrImageId, {
-      tl: { col: 7.1, row: 2.1 }, // Column H, Row 3
-      ext: { width: IMAGE_SIZE_PX, height: IMAGE_SIZE_PX }
-    }); 
+      tl: { col: 7, row: 2.1 },
+      ext: { width: 110, height: 110 }
+    });
   } catch (err) {
     console.error('QR insertion failed:', err);
   }
