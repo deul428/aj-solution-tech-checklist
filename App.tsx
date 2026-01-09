@@ -13,6 +13,7 @@ const App: React.FC = () => {
   const [fileName, setFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [warnText, setWarnText] = useState<string | null>('');
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -51,12 +52,13 @@ const App: React.FC = () => {
     }
 
     // Find exact match
-    const foundRow = masterData.find(row => 
+    const foundRow = masterData.find(row =>
       String(row[MASTER_COLUMNS.MGMT_NO] || '').trim() === targetMgmt
     );
 
     if (!foundRow) {
-      alert('입력하신 관리번호와 일치하는 행이 마스터 파일 내에 없습니다.');
+      setWarnText('입력하신 관리번호와 일치하는 행이 마스터 파일 내에 없습니다.');
+      // alert('입력하신 관리번호와 일치하는 행이 마스터 파일 내에 없습니다.');
       setCurrentChecklist(null);
       return;
     }
@@ -76,6 +78,7 @@ const App: React.FC = () => {
     };
 
     setCurrentChecklist(checklist);
+    setWarnText('')
   };
 
   const handleExport = () => {
@@ -100,7 +103,7 @@ const App: React.FC = () => {
               1. 마스터 파일 업로드
             </h2>
             {masterData.length > 0 && (
-              <button 
+              <button
                 onClick={clearMasterData}
                 className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1 transition-colors"
               >
@@ -108,17 +111,17 @@ const App: React.FC = () => {
               </button>
             )}
           </div>
-          
+
           {!fileName ? (
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
               <FileUp className="w-10 h-10 text-gray-400 mb-2" />
               <p className="text-gray-600 font-medium">Excel 마스터 파일을 선택하세요</p>
-              <input 
-                type="file" 
+              <input
+                type="file"
                 ref={fileInputRef}
-                onChange={handleFileUpload} 
-                accept=".xlsx, .xls" 
-                className="hidden" 
+                onChange={handleFileUpload}
+                accept=".xlsx, .xls"
+                className="hidden"
               />
             </div>
           ) : (
@@ -139,30 +142,31 @@ const App: React.FC = () => {
             2. 관리번호 입력
           </h2>
           <div className="flex gap-2">
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={mgmtNumber}
               onChange={(e) => setMgmtNumber(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="관리번호를 입력하세요 (예: 851BX198)"
               className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
-            <button 
+            <button
               onClick={handleSearch}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-lg shadow-md transition-all flex items-center gap-2"
             >
               조회
             </button>
           </div>
+          <div>{warnText}</div>
         </section>
 
         {/* Result Area */}
         {currentChecklist && (
           <section className="animate-in fade-in duration-300">
             <ChecklistPreview data={currentChecklist} />
-            
+
             <div className="flex justify-center mt-6">
-              <button 
+              <button
                 onClick={handleExport}
                 className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-12 rounded-lg shadow-lg flex items-center gap-3 transform hover:scale-105 transition-all"
               >
@@ -172,7 +176,7 @@ const App: React.FC = () => {
           </section>
         )}
       </main>
-    </div>
+    </div >
   );
 };
 

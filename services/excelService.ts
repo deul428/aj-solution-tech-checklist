@@ -60,7 +60,7 @@ export const downloadChecklistExcel = async (data: ChecklistData, fileName: stri
   };
 
   const dataValueStyle: Partial<ExcelJS.Style> = {
-    font: { size: 16, name: 'Malgun Gothic' },
+    font: { bold: true, size: 16, name: 'Malgun Gothic' },
     alignment: { horizontal: 'center', vertical: 'middle' },
     border: thinBorder
   };
@@ -75,7 +75,7 @@ export const downloadChecklistExcel = async (data: ChecklistData, fileName: stri
   // Row 1: Title and MGMT
   const row1 = worksheet.getRow(1);
   row1.height = 120;
-  worksheet.mergeCells('A1:D1');
+  worksheet.mergeCells('A1:E1');
   const titleCell = worksheet.getCell('A1');
   titleCell.value = '상품/임가/경,중 체크리스트';
   titleCell.font = { bold: true, size: 32, name: 'Malgun Gothic' };
@@ -83,7 +83,7 @@ export const downloadChecklistExcel = async (data: ChecklistData, fileName: stri
 
   const mgmtCell = worksheet.getCell('H1');
   mgmtCell.value = `관리번호: ${data.mgmtNumber}`;
-  mgmtCell.font = { size: 16, name: 'Malgun Gothic', underline: true };
+  mgmtCell.font = { size: 22, name: 'Malgun Gothic', underline: true };
   mgmtCell.alignment = { horizontal: 'right', vertical: 'bottom' };
 
   // Row 2: Header Border Line (Visual distinction)
