@@ -14,6 +14,7 @@ export interface ChecklistData {
   assetNumber: string;
   vehicleNumber: string;
   serialNumber: string;
+  category: '물류' | '건설' | null;
 }
 
 export const MASTER_COLUMNS = {
@@ -25,5 +26,6 @@ export const MASTER_COLUMNS = {
   PROD_YEAR: '제조년도',
   ASSET_NO: '자산번호',
   VEHICLE_NO: '차량번호',
-  SERIAL_NO: '시리얼번호'
+  SERIAL_NO: '시리얼번호',
+  EQUIP_STATUS: '장비상태'
 };

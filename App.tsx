@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { FileUp, Search, Download, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { MasterDataRow, ChecklistData, MASTER_COLUMNS } from './types';
 import { parseMasterExcel, downloadChecklistExcel } from './services/excelService';
@@ -7,13 +7,14 @@ import ChecklistPreview from './components/ChecklistPreview';
 
 const App: React.FC = () => {
   const [masterData, setMasterData] = useState<MasterDataRow[]>([]);
-  const [mgmtNumber, setMgmtNumber] = useState('');
-  const [currentChecklist, setCurrentChecklist] = useState<ChecklistData | null>(null);
+  const [mgmtNumbersInput, setMgmtNumbersInput] = useState('');
+  const [currentChecklists, setCurrentChecklists] = useState<ChecklistData[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [warnText, setWarnText] = useState<string | null>('');
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -35,8 +36,9 @@ const App: React.FC = () => {
   const clearMasterData = () => {
     setMasterData([]);
     setFileName(null);
-    setCurrentChecklist(null);
-    setMgmtNumber('');
+    setCurrentChecklists([]);
+    setMgmtNumbersInput('');
+    setWarnText('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -45,57 +47,73 @@ const App: React.FC = () => {
       alert('먼저 마스터 엑셀 파일을 업로드해주세요.');
       return;
     }
-    const targetMgmt = mgmtNumber.trim();
-    if (!targetMgmt) {
-      alert('관리번호를 입력해주세요.');
+
+    const targetMgmts = mgmtNumbersInput.split(/\s+/).filter(Boolean);
+    if (!targetMgmts.length) {
+      alert('관리번호를 하나 이상 입력해주세요.');
       return;
     }
 
-    // Find exact match
-    const foundRow = masterData.find(row =>
-      String(row[MASTER_COLUMNS.MGMT_NO] || '').trim() === targetMgmt
-    );
+    const foundChecklists: ChecklistData[] = [];
+    const missingMgmts: string[] = [];
 
-    if (!foundRow) {
-      setWarnText('입력하신 관리번호와 일치하는 행이 마스터 파일 내에 없습니다.');
-      // alert('입력하신 관리번호와 일치하는 행이 마스터 파일 내에 없습니다.');
-      setCurrentChecklist(null);
-      return;
+    targetMgmts.forEach(mgmt => {
+      const trimmedMgmt = mgmt.trim();
+      const foundRow = masterData.find(row =>
+        String(row[MASTER_COLUMNS.MGMT_NO] || '').trim() === trimmedMgmt
+      );
+
+      if (foundRow) {
+        // 장비상태 로직: A가 포함되면 물류, B가 포함되면 건설
+        const status = String(foundRow[MASTER_COLUMNS.EQUIP_STATUS] || '');
+        let category: '물류' | '건설' | null = null;
+        if (status.includes('A')) category = '물류';
+        else if (status.includes('B')) category = '건설';
+
+        foundChecklists.push({
+          mgmtNumber: trimmedMgmt,
+          productCode: String(foundRow[MASTER_COLUMNS.PROD_NO] || ''),
+          productName: String(foundRow[MASTER_COLUMNS.PROD_NAME] || ''),
+          manufacturer: String(foundRow[MASTER_COLUMNS.MANUFACTURER] || ''),
+          model: String(foundRow[MASTER_COLUMNS.MODEL_NAME] || ''),
+          year: String(foundRow[MASTER_COLUMNS.PROD_YEAR] || ''),
+          usageTime: '',
+          assetNumber: String(foundRow[MASTER_COLUMNS.ASSET_NO] || ''),
+          vehicleNumber: String(foundRow[MASTER_COLUMNS.VEHICLE_NO] || ''),
+          serialNumber: String(foundRow[MASTER_COLUMNS.SERIAL_NO] || ''),
+          category: category
+        });
+      } else {
+        missingMgmts.push(trimmedMgmt);
+      }
+    });
+
+    setCurrentChecklists(foundChecklists);
+    
+    if (missingMgmts.length > 0) {
+      setWarnText(`다음 번호를 찾을 수 없습니다: ${missingMgmts.join(', ')}`);
+    } else {
+      setWarnText('');
     }
-
-    // Map master row to ChecklistData
-    const checklist: ChecklistData = {
-      mgmtNumber: targetMgmt,
-      productCode: String(foundRow[MASTER_COLUMNS.PROD_NO] || ''),
-      productName: String(foundRow[MASTER_COLUMNS.PROD_NAME] || ''),
-      manufacturer: String(foundRow[MASTER_COLUMNS.MANUFACTURER] || ''),
-      model: String(foundRow[MASTER_COLUMNS.MODEL_NAME] || ''),
-      year: String(foundRow[MASTER_COLUMNS.PROD_YEAR] || ''),
-      usageTime: '', // Always empty per requirement
-      assetNumber: String(foundRow[MASTER_COLUMNS.ASSET_NO] || ''),
-      vehicleNumber: String(foundRow[MASTER_COLUMNS.VEHICLE_NO] || ''),
-      serialNumber: String(foundRow[MASTER_COLUMNS.SERIAL_NO] || ''),
-    };
-
-    setCurrentChecklist(checklist);
-    setWarnText('')
   };
 
   const handleExport = () => {
-    if (!currentChecklist) return;
-    const downloadName = `Checklist_${currentChecklist.mgmtNumber}.xlsx`;
-    downloadChecklistExcel(currentChecklist, downloadName);
+    if (currentChecklists.length === 0) return;
+    const downloadName = currentChecklists.length === 1 
+      ? `Checklist_${currentChecklists[0].mgmtNumber}.xlsx`
+      : `Checklists_Batch_${currentChecklists.length}pcs.xlsx`;
+    
+    downloadChecklistExcel(currentChecklists, downloadName);
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center py-12 px-4 bg-gray-100">
       <header className="max-w-5xl w-full mb-10 text-center">
-        <h1 className="text-3xl font-extrabold text-blue-900 mb-2">정비 체크리스트 QR 생성 봇</h1>
-        <p className="text-gray-600">마스터 데이터를 조회하여 공식 양식의 체크리스트를 생성합니다.</p>
+        <h1 className="text-3xl font-extrabold text-blue-900 mb-2">정비 체크리스트 QR 일괄 생성 봇</h1>
+        <p className="text-gray-600">여러 개의 관리번호를 공백으로 구분해 입력하면 일괄 생성이 가능합니다.</p>
       </header>
 
       <main className="max-w-5xl w-full space-y-8">
-        {/* Step 1: Master File Upload */}
         <section className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-800">
@@ -129,49 +147,56 @@ const App: React.FC = () => {
               <CheckCircle2 className="w-6 h-6 text-green-500" />
               <div className="flex-1">
                 <p className="text-green-900 font-semibold">{fileName}</p>
-                <p className="text-green-700 text-sm">{masterData.length}개의 행이 로드됨</p>
+                <p className="text-green-700 text-sm">{masterData.length.toLocaleString()}개의 행이 로드됨</p>
               </div>
             </div>
           )}
         </section>
 
-        {/* Step 2: Search */}
         <section className={`bg-white p-6 rounded-xl shadow-md border border-gray-200 transition-opacity ${!masterData.length ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
           <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-800 mb-4">
             <Search className="w-5 h-5 text-blue-600" />
-            2. 관리번호 입력
+            2. 관리번호 입력 (공백으로 구분)
           </h2>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={mgmtNumber}
-              onChange={(e) => setMgmtNumber(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="관리번호를 입력하세요 (예: 851BX198)"
-              className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          <div className="flex flex-col gap-3">
+            <textarea
+              value={mgmtNumbersInput}
+              onChange={(e) => setMgmtNumbersInput(e.target.value)}
+              placeholder="여러 개의 관리번호를 공백이나 줄바꿈으로 구분해 입력하세요.&#10;(예: 851BX198 900CX200)"
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 h-24 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
             />
             <button
               onClick={handleSearch}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-lg shadow-md transition-all flex items-center gap-2"
+              className="bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 px-10 rounded-lg shadow-md transition-all flex items-center justify-center gap-2"
             >
-              조회
+              <Search className="w-5 h-5" /> 일괄 조회
             </button>
           </div>
-          <div>{warnText}</div>
+          {warnText && (
+            <div className="mt-3 flex items-center gap-2 text-red-600 text-sm font-medium">
+              <AlertCircle className="w-4 h-4" /> {warnText}
+            </div>
+          )}
         </section>
 
-        {/* Result Area */}
-        {currentChecklist && (
-          <section className="animate-in fade-in duration-300">
-            <ChecklistPreview data={currentChecklist} />
-
-            <div className="flex justify-center mt-6">
+        {currentChecklists.length > 0 && (
+          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+            <div className="flex items-center justify-between mb-4 sticky top-4 z-10 bg-gray-100/80 backdrop-blur-sm p-2 rounded-lg">
+              <h3 className="text-lg font-bold text-gray-800">조회 결과: {currentChecklists.length}건</h3>
               <button
                 onClick={handleExport}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-12 rounded-lg shadow-lg flex items-center gap-3 transform hover:scale-105 transition-all"
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg flex items-center gap-3 transition-all"
               >
-                <Download className="w-6 h-6" /> 엑셀 파일 생성 및 다운로드
+                <Download className="w-5 h-5" /> {currentChecklists.length}건 일괄 다운로드
               </button>
+            </div>
+            
+            <div className="space-y-12">
+              {currentChecklists.map((checklist, idx) => (
+                <div key={`${checklist.mgmtNumber}-${idx}`}>
+                  <ChecklistPreview data={checklist} />
+                </div>
+              ))}
             </div>
           </section>
         )}
