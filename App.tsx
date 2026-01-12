@@ -90,7 +90,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col items-center py-12 px-4 bg-gray-100">
       <header className="max-w-5xl w-full mb-10 text-center">
-        <h1 className="text-3xl font-extrabold text-blue-900 mb-2">자산 체크리스트 생성 도구</h1>
+        <h1 className="text-3xl font-extrabold text-blue-900 mb-2">정비 체크리스트 QR 생성 봇</h1>
         <p className="text-gray-600">마스터 데이터를 조회하여 공식 양식의 체크리스트를 생성합니다.</p>
       </header>
 
