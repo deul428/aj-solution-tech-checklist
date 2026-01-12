@@ -68,6 +68,10 @@ export const downloadChecklistExcel = async (
     alignment: { vertical: "middle" },
   };
 
+  const infoStyle_14: Partial<ExcelJS.Style> = {
+    font: { size: 14, name: "Malgun Gothic" },
+    alignment: { vertical: "middle" },
+  };
   // Group data by 3
   for (let i = 0; i < dataList.length; i += ITEMS_PER_SHEET) {
     const chunk = dataList.slice(i, i + ITEMS_PER_SHEET);
@@ -127,18 +131,18 @@ export const downloadChecklistExcel = async (
 
       // Row 3: Info (Date, QR Location)
       const row3 = worksheet.getRow(startRow + 2);
-      row3.height = 90;
+      row3.height = 80;
       const row4 = worksheet.getRow(startRow + 3);
-      row4.height = 90;
+      row4.height = 80;
       worksheet.getCell(`A${startRow + 2}`).value = "정비자:";
-      worksheet.getCell(`A${startRow + 2}`).style = infoStyle;
+      worksheet.getCell(`A${startRow + 2}`).style = infoStyle_14;
       worksheet.getCell(`A${startRow + 3}`).value = `정비 일자:`;
-      worksheet.getCell(`A${startRow + 3}`).style = infoStyle;
+      worksheet.getCell(`A${startRow + 3}`).style = infoStyle_14;
       // worksheet.mergeCells(`A${startRow + 2}:B${startRow + 2}`);
       worksheet.getCell(`D${startRow + 2}`).value = "QC:";
-      worksheet.getCell(`D${startRow + 2}`).style = infoStyle;
+      worksheet.getCell(`D${startRow + 2}`).style = infoStyle_14;
       worksheet.getCell(`D${startRow + 3}`).value = `QC 일자:`;
-      worksheet.getCell(`D${startRow + 3}`).style = infoStyle;
+      worksheet.getCell(`D${startRow + 3}`).style = infoStyle_14;
 
       // Row 5: Product Info
       const row6 = worksheet.getRow(startRow + 5);
@@ -253,7 +257,7 @@ export const downloadChecklistExcel = async (
           extension: "png",
         });
         worksheet.addImage(qrImageId, {
-          tl: { col: 7, row: startRow + 1.1 },
+          tl: { col: 7.8, row: startRow + 1.1 },
           ext: { width: 110, height: 110 },
         });
       } catch (err) {
