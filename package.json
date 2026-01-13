@@ -12,6 +12,8 @@
     "xlsx": "0.18.5",
     "exceljs": "4.4.0",
     "qrcode": "1.5.3",
+    "jspdf": "2.5.1",
+    "html2canvas": "1.4.1",
     "react-dom": "^19.2.3",
     "react": "^19.2.3",
     "lucide-react": "^0.562.0"

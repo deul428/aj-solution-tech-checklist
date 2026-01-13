@@ -1,4 +1,3 @@
-
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import QRCode from "qrcode";
@@ -112,20 +111,24 @@ export const downloadChecklistExcel = async (
       titleCell.font = { bold: true, size: 30, name: "Malgun Gothic" };
       titleCell.alignment = { horizontal: "left", vertical: "middle" };
 
-      const mgmtCell = worksheet.getCell(`H${startRow}`);
-      mgmtCell.value = `관리번호: ${data.mgmtNumber}`;
-      mgmtCell.font = { size: 18, name: "Malgun Gothic", underline: true, bold: true };
-      mgmtCell.alignment = { horizontal: "right", vertical: "bottom" };
+      //   const mgmtCell = worksheet.getCell(`H${startRow}`);
+      //   mgmtCell.value = `관리번호: ${data.mgmtNumber}`;
+      //   mgmtCell.font = {
+      //     size: 12,
+      //     name: "Malgun Gothic",
+      //     /* underline: true,  */ bold: true,
+      //   };
+      //   mgmtCell.alignment = { horizontal: "right", vertical: "bottom" };
 
       // Row 2 (Content Row 2): Separator
       const row2 = worksheet.getRow(startRow + 1);
       row2.height = 10;
       worksheet.mergeCells(`A${startRow + 1}:H${startRow + 1}`);
-      worksheet.getCell(`A${startRow + 1}`).border = { bottom: { style: "medium" } };
+      //   worksheet.getCell(`A${startRow + 1}`).border = { bottom: { style: "medium" } };
 
       // Row 3 (Content Row 3): Signatures 1
       const row3 = worksheet.getRow(startRow + 2);
-      row3.height = 80;
+      row3.height = 100;
       worksheet.getCell(`A${startRow + 2}`).value = "정비자:";
       worksheet.getCell(`A${startRow + 2}`).style = infoStyle_14;
       worksheet.getCell(`D${startRow + 2}`).value = "QC:";
@@ -133,11 +136,19 @@ export const downloadChecklistExcel = async (
 
       // Row 4 (Content Row 4): Signatures 2
       const row4 = worksheet.getRow(startRow + 3);
-      row4.height = 80;
+      row4.height = 100;
       worksheet.getCell(`A${startRow + 3}`).value = `정비 일자:`;
       worksheet.getCell(`A${startRow + 3}`).style = infoStyle_14;
       worksheet.getCell(`D${startRow + 3}`).value = `QC 일자:`;
       worksheet.getCell(`D${startRow + 3}`).style = infoStyle_14;
+      worksheet.getCell(
+        `H${startRow + 3}`
+      ).value = `관리번호: ${data.mgmtNumber}`;
+      worksheet.getCell(`H${startRow + 3}`).style = {
+        size: 12, 
+        bold: true, 
+        vertical: "bottom",
+      };
 
       // Row 5: Blank separator in source image logic (Row index skip)
       worksheet.getRow(startRow + 4).height = 15;
@@ -152,7 +163,8 @@ export const downloadChecklistExcel = async (
       worksheet.getCell(`C${startRow + 5}`).value = "상품명";
       worksheet.getCell(`C${startRow + 5}`).style = headerLabelStyle;
       worksheet.mergeCells(`D${startRow + 5}:H${startRow + 5}`);
-      for (let c = 4; c <= 8; c++) worksheet.getCell(startRow + 5, c).border = thinBorder;
+      for (let c = 4; c <= 8; c++)
+        worksheet.getCell(startRow + 5, c).border = thinBorder;
       worksheet.getCell(`D${startRow + 5}`).value = data.productName;
       worksheet.getCell(`D${startRow + 5}`).style = leftAlignDataValueStyle;
 
@@ -190,7 +202,8 @@ export const downloadChecklistExcel = async (
       worksheet.getCell(`E${startRow + 7}`).value = "차대번호";
       worksheet.getCell(`E${startRow + 7}`).style = headerLabelStyle;
       worksheet.mergeCells(`F${startRow + 7}:H${startRow + 7}`);
-      for (let c = 6; c <= 8; c++) worksheet.getCell(startRow + 7, c).border = thinBorder;
+      for (let c = 6; c <= 8; c++)
+        worksheet.getCell(startRow + 7, c).border = thinBorder;
       worksheet.getCell(`F${startRow + 7}`).value = data.serialNumber;
       worksheet.getCell(`F${startRow + 7}`).style = leftAlignDataValueStyle;
 
@@ -199,22 +212,36 @@ export const downloadChecklistExcel = async (
       row9.height = 80;
       worksheet.getCell(`A${startRow + 8}`).value = "물류:";
       worksheet.getCell(`A${startRow + 8}`).style = infoStyle;
-      worksheet.getCell(`B${startRow + 8}`).value = data.category === "물류" ? "O" : "";
-      worksheet.getCell(`B${startRow + 8}`).font = { bold: true, size: 20, name: "Malgun Gothic" };
-      worksheet.getCell(`B${startRow + 8}`).alignment = { vertical: "middle", horizontal: "center" };
-      worksheet.getCell(`B${startRow + 8}`).border = { bottom: { style: "thin" } };
+      worksheet.getCell(`B${startRow + 8}`).value =
+        data.category === "물류" ? "O" : "";
+      worksheet.getCell(`B${startRow + 8}`).font = {
+        bold: true,
+        size: 20,
+        name: "Malgun Gothic",
+      };
+      worksheet.getCell(`B${startRow + 8}`).alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      }; 
 
       worksheet.getCell(`C${startRow + 8}`).value = "건설:";
       worksheet.getCell(`C${startRow + 8}`).style = infoStyle;
-      worksheet.getCell(`D${startRow + 8}`).value = data.category === "건설" ? "O" : "";
-      worksheet.getCell(`D${startRow + 8}`).font = { bold: true, size: 20, name: "Malgun Gothic" };
-      worksheet.getCell(`D${startRow + 8}`).alignment = { vertical: "middle", horizontal: "center" };
-      worksheet.getCell(`D${startRow + 8}`).border = { bottom: { style: "thin" } };
+      worksheet.getCell(`D${startRow + 8}`).value =
+        data.category === "건설" ? "O" : "";
+      worksheet.getCell(`D${startRow + 8}`).font = {
+        bold: true,
+        size: 20,
+        name: "Malgun Gothic",
+      };
+      worksheet.getCell(`D${startRow + 8}`).alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      }; 
 
       worksheet.mergeCells(`F${startRow + 8}:H${startRow + 8}`);
       const legendCell = worksheet.getCell(`F${startRow + 8}`);
       legendCell.value = "양호: o  보통: △  불량: x  해당없음: N";
-      legendCell.font = { size: 14, name: "Malgun Gothic" };
+      legendCell.font = { size: 12, name: "Malgun Gothic" };
       legendCell.alignment = { horizontal: "right", vertical: "middle" };
 
       // Row 10: Gap Row (Spacing between checklists)
@@ -223,14 +250,17 @@ export const downloadChecklistExcel = async (
 
       // QR Code placement
       try {
-        const qrDataUrl = await QRCode.toDataURL(data.mgmtNumber, { margin: 1, width: 300 });
+        const qrDataUrl = await QRCode.toDataURL(data.mgmtNumber, {
+          margin: 1,
+          width: 300,
+        });
         const qrImageId = workbook.addImage({
           base64: qrDataUrl,
           extension: "png",
         });
         worksheet.addImage(qrImageId, {
-          tl: { col: 7, row: startRow + 1.1 },
-          ext: { width: 110, height: 110 },
+          tl: { col: 7.8, row: startRow + 1.05 },
+          ext: { width: 100, height: 100 },
         });
       } catch (err) {
         console.error("QR insertion failed:", err);

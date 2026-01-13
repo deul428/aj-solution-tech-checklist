@@ -1,8 +1,9 @@
 
 import React, { useState, useRef } from 'react';
-import { FileUp, Search, Download, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { FileUp, Search, Download, Trash2, CheckCircle2, AlertCircle, FileText, Loader2 } from 'lucide-react';
 import { MasterDataRow, ChecklistData, MASTER_COLUMNS } from './types';
 import { parseMasterExcel, downloadChecklistExcel } from './services/excelService';
+import { downloadChecklistPDF } from './services/pdfService';
 import ChecklistPreview from './components/ChecklistPreview';
 
 const App: React.FC = () => {
@@ -10,6 +11,7 @@ const App: React.FC = () => {
   const [mgmtNumbersInput, setMgmtNumbersInput] = useState('');
   const [currentChecklists, setCurrentChecklists] = useState<ChecklistData[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,7 +66,6 @@ const App: React.FC = () => {
       );
 
       if (foundRow) {
-        // 장비상태 로직: A가 포함되면 물류, B가 포함되면 건설
         const status = String(foundRow[MASTER_COLUMNS.EQUIP_STATUS] || '');
         let category: '물류' | '건설' | null = null;
         if (status.includes('A')) category = '물류';
@@ -97,13 +98,30 @@ const App: React.FC = () => {
     }
   };
 
-  const handleExport = () => {
+  const handleExcelExport = () => {
     if (currentChecklists.length === 0) return;
     const downloadName = currentChecklists.length === 1 
       ? `Checklist_${currentChecklists[0].mgmtNumber}.xlsx`
       : `Checklists_Batch_${currentChecklists.length}pcs.xlsx`;
     
     downloadChecklistExcel(currentChecklists, downloadName);
+  };
+
+  const handlePdfExport = async () => {
+    if (currentChecklists.length === 0) return;
+    setIsExportingPdf(true);
+    try {
+      const downloadName = currentChecklists.length === 1 
+        ? `Checklist_${currentChecklists[0].mgmtNumber}.pdf`
+        : `Checklists_Batch_${currentChecklists.length}pcs.pdf`;
+      
+      await downloadChecklistPDF('checklist-container', downloadName);
+    } catch (err) {
+      console.error(err);
+      alert('PDF 생성 도중 오류가 발생했습니다.');
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   return (
@@ -181,17 +199,27 @@ const App: React.FC = () => {
 
         {currentChecklists.length > 0 && (
           <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-            <div className="flex items-center justify-between mb-4 sticky top-4 z-10 bg-gray-100/80 backdrop-blur-sm p-2 rounded-lg">
-              <h3 className="text-lg font-bold text-gray-800">조회 결과: {currentChecklists.length}건</h3>
-              <button
-                onClick={handleExport}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg flex items-center gap-3 transition-all"
-              >
-                <Download className="w-5 h-5" /> {currentChecklists.length}건 일괄 다운로드
-              </button>
+            <div className="flex items-center justify-between mb-4 sticky top-4 z-10 bg-gray-100/80 backdrop-blur-sm p-2 rounded-lg gap-2">
+              <h3 className="text-lg font-bold text-gray-800 flex-1">조회 결과: {currentChecklists.length}건</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleExcelExport}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg flex items-center gap-2 transition-all"
+                >
+                  <Download className="w-5 h-5" /> 엑셀 다운로드
+                </button>
+                <button
+                  onClick={handlePdfExport}
+                  disabled={isExportingPdf}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg flex items-center gap-2 transition-all disabled:bg-red-400"
+                >
+                  {isExportingPdf ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5" />}
+                  PDF 다운로드
+                </button>
+              </div>
             </div>
             
-            <div className="space-y-12">
+            <div id="checklist-container" className="space-y-12">
               {currentChecklists.map((checklist, idx) => (
                 <div key={`${checklist.mgmtNumber}-${idx}`}>
                   <ChecklistPreview data={checklist} />
