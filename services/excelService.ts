@@ -31,6 +31,7 @@ export const parseMasterExcel = (file: File): Promise<MasterDataRow[]> => {
  */
 export const downloadChecklistExcel = async (
   dataList: ChecklistData[],
+  engineerInput: string,
   fileName: string = "checklists.xlsx"
 ) => {
   const workbook = new ExcelJS.Workbook();
@@ -131,6 +132,8 @@ export const downloadChecklistExcel = async (
       row3.height = 100;
       worksheet.getCell(`A${startRow + 2}`).value = "정비자:";
       worksheet.getCell(`A${startRow + 2}`).style = infoStyle_14;
+      worksheet.getCell(`B${startRow + 2}`).value = engineerInput;
+      worksheet.getCell(`B${startRow + 2}`).style = infoStyle_14;
       worksheet.getCell(`D${startRow + 2}`).value = "QC:";
       worksheet.getCell(`D${startRow + 2}`).style = infoStyle_14;
 
@@ -145,8 +148,8 @@ export const downloadChecklistExcel = async (
         `H${startRow + 3}`
       ).value = `관리번호: ${data.mgmtNumber}`;
       worksheet.getCell(`H${startRow + 3}`).style = {
-        size: 12, 
-        bold: true, 
+        size: 12,
+        bold: true,
         vertical: "bottom",
       };
 
@@ -222,7 +225,7 @@ export const downloadChecklistExcel = async (
       worksheet.getCell(`B${startRow + 8}`).alignment = {
         vertical: "middle",
         horizontal: "center",
-      }; 
+      };
 
       worksheet.getCell(`C${startRow + 8}`).value = "건설:";
       worksheet.getCell(`C${startRow + 8}`).style = infoStyle;
@@ -236,7 +239,7 @@ export const downloadChecklistExcel = async (
       worksheet.getCell(`D${startRow + 8}`).alignment = {
         vertical: "middle",
         horizontal: "center",
-      }; 
+      };
 
       worksheet.mergeCells(`F${startRow + 8}:H${startRow + 8}`);
       const legendCell = worksheet.getCell(`F${startRow + 8}`);
