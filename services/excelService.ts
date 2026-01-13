@@ -219,12 +219,12 @@ export const downloadChecklistExcel = async (
         data.category === "물류" ? "O" : "";
       worksheet.getCell(`B${startRow + 8}`).font = {
         bold: true,
-        size: 20,
+        size: 16,
         name: "Malgun Gothic",
       };
       worksheet.getCell(`B${startRow + 8}`).alignment = {
         vertical: "middle",
-        horizontal: "center",
+        horizontal: "left",
       };
 
       worksheet.getCell(`C${startRow + 8}`).value = "건설:";
@@ -233,12 +233,12 @@ export const downloadChecklistExcel = async (
         data.category === "건설" ? "O" : "";
       worksheet.getCell(`D${startRow + 8}`).font = {
         bold: true,
-        size: 20,
+        size: 16,
         name: "Malgun Gothic",
       };
       worksheet.getCell(`D${startRow + 8}`).alignment = {
         vertical: "middle",
-        horizontal: "center",
+        horizontal: "left",
       };
 
       worksheet.mergeCells(`F${startRow + 8}:H${startRow + 8}`);

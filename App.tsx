@@ -4,6 +4,7 @@ import {
   Search,
   Download,
   Trash2,
+  UserRoundPen,
   CheckCircle2,
   AlertCircle,
   FileText,
@@ -220,12 +221,6 @@ const App: React.FC = () => {
               placeholder="여러 개의 관리번호를 공백이나 줄바꿈으로 구분해 입력하세요.&#10;(예: 851BX198 900CX200)"
               className="w-full border border-gray-300 rounded-lg px-4 py-3 h-24 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
             />
-            <button
-              onClick={handleSearch}
-              className="bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 px-10 rounded-lg shadow-md transition-all flex items-center justify-center gap-2"
-            >
-              <Search className="w-5 h-5" /> 일괄 조회
-            </button>
           </div>
           {warnText && (
             <div className="mt-3 flex items-center gap-2 text-red-600 text-sm font-medium">
@@ -242,25 +237,28 @@ const App: React.FC = () => {
           }`}
         >
           <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-800 mb-4">
-            <Search className="w-5 h-5 text-blue-600" />
+            <UserRoundPen className="w-5 h-5 text-blue-600" />
             3. 정비자 입력 (선택)
           </h2>
           <div className="flex flex-col gap-3">
-            <textarea
+            <input
+              type="text"
               value={engineerInput}
               onChange={(e) => setEngineerInput(e.target.value)}
               placeholder="정비자 이름을 입력하세요. 공란일 시 체크리스트에 기재되지 않습니다."
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 h-24 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
             />
-            <button
-              onClick={handleSearch}
-              className="bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 px-10 rounded-lg shadow-md transition-all flex items-center justify-center gap-2"
-            >
-              확인
-            </button>
-          </div> 
+          </div>
         </section>
 
+        <section>
+          <button
+            onClick={handleSearch}
+            className="bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 px-10 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 w-full"
+          >
+            <Search className="w-5 h-5" /> 일괄 조회
+          </button>
+        </section>
         {currentChecklists.length > 0 && (
           <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
             <div className="flex items-center justify-between mb-4 sticky top-4 z-10 bg-gray-100/80 backdrop-blur-sm p-2 rounded-lg gap-2">
@@ -292,7 +290,10 @@ const App: React.FC = () => {
             <div id="checklist-container" className="space-y-12">
               {currentChecklists.map((checklist, idx) => (
                 <div key={`${checklist.mgmtNumber}-${idx}`}>
-                  <ChecklistPreview data={checklist} engineerInput={engineerInput}/>
+                  <ChecklistPreview
+                    data={checklist}
+                    engineerInput={engineerInput}
+                  />
                 </div>
               ))}
             </div>

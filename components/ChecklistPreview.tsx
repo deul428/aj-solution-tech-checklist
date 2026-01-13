@@ -53,13 +53,13 @@ const ChecklistPreview: React.FC<ChecklistPreviewProps> = ({
             <span className="text-sm font-bold whitespace-nowrap">
               정비 일자:
             </span>
-            <div className="flex-1 text-gray-400 text-sm">{yyyy}.</div>
+            <div className="flex-1 text-sm">{yyyy}.</div>
           </div>
           <div className="flex items-end gap-2 pb-1 h-14">
             <span className="text-sm font-bold whitespace-nowrap">
               QC 일자:
             </span>
-            <div className="flex-1 text-gray-400 text-sm">{yyyy}.</div>
+            <div className="flex-1 text-sm">{yyyy}.</div>
           </div>
         </div>
 
@@ -81,7 +81,7 @@ const ChecklistPreview: React.FC<ChecklistPreviewProps> = ({
       </div>
 
       {/* Main Table: Strict 8-column layout (1/8 = 12.5% each) */}
-      <div className="w-full mb-6">
+      <div className="w-full mb-4">
         <table className="w-full border-t border-l border-black text-[14px] text-center table-fixed border-separate border-spacing-0">
           <colgroup>
             <col className="w-[12.5%]" />
@@ -171,7 +171,7 @@ const ChecklistPreview: React.FC<ChecklistPreviewProps> = ({
           <div className="flex items-center gap-2">
             <span className="font-bold text-base">물류:</span>
             <span
-              className={`w-12 h-8 flex items-center justify-center text-2xl font-black ${
+              className={`w-12 h-8 flex items-center justify-center font-black ${
                 data.category === "물류" ? "text-black" : "text-transparent"
               }`}
             >
@@ -181,7 +181,7 @@ const ChecklistPreview: React.FC<ChecklistPreviewProps> = ({
           <div className="flex items-center gap-2">
             <span className="font-bold text-base">건설:</span>
             <span
-              className={`w-12 h-8 flex items-center justify-center text-xl font-black ${
+              className={`w-12 h-8 flex items-center justify-center font-black ${
                 data.category === "건설" ? "text-black" : "text-transparent"
               }`}
             >
