@@ -261,21 +261,21 @@ const App: React.FC = () => {
         </section>
         {currentChecklists.length > 0 && (
           <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-            <div className="flex items-center justify-between mb-4 sticky top-4 z-10 bg-gray-100/80 backdrop-blur-sm p-2 rounded-lg gap-2">
+            <div className="flex items-center justify-between mb-4 sticky top-4 z-10 bg-gray-100/80 backdrop-blur-sm  rounded-lg gap-2">
               <h3 className="text-lg font-bold text-gray-800 flex-1">
                 조회 결과: {currentChecklists.length}건
               </h3>
-              <div className="flex gap-2">
+              <div className="flex  gap-2">
                 <button
                   onClick={handleExcelExport}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg flex items-center gap-2 transition-all"
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-2 rounded-lg shadow-md flex items-center gap-2 transition-all text-xs"
                 >
                   <Download className="w-5 h-5" /> 엑셀 다운로드
                 </button>
                 <button
                   onClick={handlePdfExport}
                   disabled={isExportingPdf}
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg flex items-center gap-2 transition-all disabled:bg-red-400"
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-2 rounded-lg shadow-md flex items-center gap-2 transition-all disabled:bg-red-400 text-xs"
                 >
                   {isExportingPdf ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -287,7 +287,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div id="checklist-container" className="space-y-12">
+            <div id="checklist-container" /* className="space-y-12" */>
               {currentChecklists.map((checklist, idx) => (
                 <div key={`${checklist.mgmtNumber}-${idx}`}>
                   <ChecklistPreview
