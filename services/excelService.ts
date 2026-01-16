@@ -48,13 +48,13 @@ export const downloadChecklistExcel = async (
 
   const headerLabelStyle: Partial<ExcelJS.Style> = {
     fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F2F2" } },
-    font: { bold: true, size: 16, name: "Malgun Gothic" },
+    font: { bold: true, size: 14, name: "Malgun Gothic" },
     alignment: { horizontal: "center", vertical: "middle" },
     border: thinBorder,
   };
 
   const dataValueStyle: Partial<ExcelJS.Style> = {
-    font: { bold: true, size: 16, name: "Malgun Gothic" },
+    font: { bold: true, size: 14, name: "Malgun Gothic" },
     alignment: { horizontal: "center", vertical: "middle" },
     border: thinBorder,
   };
@@ -65,7 +65,7 @@ export const downloadChecklistExcel = async (
   };
 
   const infoStyle: Partial<ExcelJS.Style> = {
-    font: { size: 16, name: "Malgun Gothic" },
+    font: { size: 14, name: "Malgun Gothic" },
     alignment: { vertical: "middle" },
   };
 
@@ -116,7 +116,7 @@ export const downloadChecklistExcel = async (
       worksheet.mergeCells(`G${startRow}:H${startRow}`);
       worksheet.getCell(`G${startRow}`).value = `관리번호: ${data.mgmtNumber}`;
       worksheet.getCell(`G${startRow}`).style = {
-        font: { size: 18, bold: true },
+        font: { size: 20, bold: true },
         alignment: { vertical: "bottom", horizontal: 'right' },
       }
 
@@ -162,7 +162,7 @@ export const downloadChecklistExcel = async (
       worksheet.mergeCells(`D${startRow + 5}:H${startRow + 5}`);
       for (let c = 4; c <= 8; c++)
         worksheet.getCell(startRow + 5, c).border = thinBorder;
-      worksheet.getCell(`D${startRow + 5}`).value = data.productName;
+      worksheet.getCell(`D${startRow + 5}`).value = data.productName?.includes("'") ? data.productName.split("'").join('') : data.productName;
       worksheet.getCell(`D${startRow + 5}`).style = leftAlignDataValueStyle;
 
       // Row 7 (Content Row 6): Mfg, Model, Year, Usage

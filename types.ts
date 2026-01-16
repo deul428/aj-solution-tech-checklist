@@ -19,13 +19,23 @@ export interface ChecklistData {
 
 export const MASTER_COLUMNS = {
   MGMT_NO: '관리번호',
-  PROD_NO: '상품번호',
-  PROD_NAME: '상품명',
-  MANUFACTURER: '제조사',
-  MODEL_NAME: '모델명',
+  PROD_NO: '자재번호',
+  PROD_NAME: '자재내역',
+  MANUFACTURER: '제조사명',
+  MODEL_NAME: '제조사모델명',
   PROD_YEAR: '제조년도',
   ASSET_NO: '자산번호',
   VEHICLE_NO: '차량번호',
   SERIAL_NO: '시리얼번호',
   EQUIP_STATUS: '장비상태'
+  // MGMT_NO: '관리번호',
+  // PROD_NO: '상품번호',
+  // PROD_NAME: '상품명',
+  // MANUFACTURER: '제조사',
+  // MODEL_NAME: '모델명',
+  // PROD_YEAR: '제조년도',
+  // ASSET_NO: '자산번호',
+  // VEHICLE_NO: '차량번호',
+  // SERIAL_NO: '시리얼번호',
+  // EQUIP_STATUS: '장비상태'
 };

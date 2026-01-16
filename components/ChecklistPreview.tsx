@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { ChecklistData } from "../types";
@@ -23,66 +24,64 @@ const ChecklistPreview: React.FC<ChecklistPreviewProps> = ({
 
   const today = new Date();
   const yyyy = `${today.getFullYear().toString()}`;
-  // .toString()
-  // .padStart(2, "0")}.${today.getDate().toString().padStart(2, "0")}`;
+
+  // Helper component for cell content to ensure vertical centering in PDF
+  // Fix: Make children optional to avoid TS error on empty cells
+  const CellContent = ({ children, align = "center" }: { children?: React.ReactNode, align?: "center" | "left" }) => (
+    <div className={`flex items-center ${align === "left" ? "justify-start px-3" : "justify-center px-1"} h-full leading-none w-full`}>
+      {children}
+    </div>
+  );
 
   return (
     <div className="checklist-preview-item bg-white p-6 border border-gray-100 w-[210mm] mx-auto my-4 font-sans text-black overflow-hidden box-border shadow-sm">
-      {/* Excel Row 1 & 2: Title & Mgmt No */}
+      {/* Header Area */}
       <div className="flex justify-between items-end mb-1 px-1">
         <h2 className="text-[28px] font-bold leading-none tracking-tight">
           상품/임가/경,중 체크리스트
         </h2>
       </div>
 
-      {/* Row 2: Fixed Black Separator */}
-
-      {/* Row 3, 4: Signatures & QR Section */}
       <div className="flex justify-between items-start mb-4 px-1">
         <div className="grid grid-cols-2 gap-x-12 gap-y-2 flex-1">
-          {/* Using border-black for better PDF visibility */}
-          <div className="flex items-end gap-2 pb-1 h-14">
+          <div className="flex items-end gap-2 border-black pb-1 h-14">
             <span className="text-md font-bold whitespace-nowrap">정비자: {engineerInput}</span>
             <div className="flex-1"></div>
           </div>
-          <div className="flex items-end gap-2 pb-1 h-14">
+          <div className="flex items-end gap-2 border-black pb-1 h-14">
             <span className="text-md font-bold whitespace-nowrap">QC:</span>
             <div className="flex-1"></div>
           </div>
-          <div className="flex items-end gap-2 pb-1 h-14">
-            <span className="text-md font-bold whitespace-nowrap">
-              정비 일자:
-            </span>
+          <div className="flex items-end gap-2 border-black pb-1 h-14">
+            <span className="text-md font-bold whitespace-nowrap">정비 일자:</span>
             <div className="flex-1 text-md">{yyyy}.</div>
           </div>
-          <div className="flex items-end gap-2 pb-1 h-14">
-            <span className="text-md font-bold whitespace-nowrap">
-              QC 일자:
-            </span>
+          <div className="flex items-end gap-2 border-black pb-1 h-14">
+            <span className="text-md font-bold whitespace-nowrap">QC 일자:</span>
             <div className="flex-1 text-md">{yyyy}.</div>
           </div>
         </div>
 
-        {/* QR Section - Styled to match image capture constraints */}
         <div className="ml-8 p-1 bg-white flex items-center justify-center">
           {qrUrl ? (
-            <div className="flex flex-col items-center gap-0.5">
-              <div className="text-right">
-                <span className="text-lg font-bold ">
-                  관리번호: {data.mgmtNumber}
+            <div className="flex flex-col items-center gap-1">
+              <div className="text-right mb-1">
+                <span className="text-md font-bold">
+                  관리번호:
+                  <span className="text-xl font-bold"> {data.mgmtNumber}</span>
                 </span>
               </div>
               <img src={qrUrl} alt="QR" className="w-24 h-24 block" />
             </div>
           ) : (
-            <div className="w-24 h-24 bg-gray-50" />
+            <div className="w-24 h-24 bg-gray-50 border border-dashed border-gray-300" />
           )}
         </div>
       </div>
 
-      {/* Main Table: Strict 8-column layout (1/8 = 12.5% each) */}
+      {/* Main Table: Precise 8-column layout (12.5% each) */}
       <div className="w-full mb-4">
-        <table className="w-full border-t border-l border-black text-[16px] text-center table-fixed border-separate border-spacing-0">
+        <table className="w-full border-t-2 border-l-2 border-black text-[14px] table-fixed border-separate border-spacing-0">
           <colgroup>
             <col className="w-[12.5%]" />
             <col className="w-[12.5%]" />
@@ -94,100 +93,90 @@ const ChecklistPreview: React.FC<ChecklistPreviewProps> = ({
             <col className="w-[12.5%]" />
           </colgroup>
           <tbody>
-            {/* Row 6: Code(2) & Name(6) */}
+            {/* Row 6: Code(1) + Val(1) + NameLabel(1) + NameVal(5) = 8 */}
             <tr className="h-12">
-              <td className="bg-gray-100 font-bold border-r border-b border-black px-1">
-                상품코드
+              <td className="bg-gray-100 font-bold border-r-2 border-b-2 border-black p-0 align-middle">
+                <CellContent>상품코드</CellContent>
               </td>
-              <td className="border-r border-b border-black font-bold px-1 overflow-hidden truncate">
-                {data.productCode}
+              <td className="border-r-2 border-b-2 border-black font-bold p-0 overflow-hidden align-middle">
+                <CellContent>{data.productCode}</CellContent>
               </td>
-              <td className="bg-gray-100 font-bold border-r border-b border-black px-1">
-                상품명
+              <td className="bg-gray-100 font-bold border-r-2 border-b-2 border-black p-0 align-middle">
+                <CellContent>상품명</CellContent>
               </td>
-              <td
-                className="text-left px-3 font-bold border-r border-b border-black"
-                colSpan={5}
-              >
-                {data.productName}
+              <td className="border-r-2 border-b-2 border-black font-bold p-0 align-middle" colSpan={5}>
+                <CellContent align="left">{data.productName}</CellContent>
               </td>
             </tr>
-            {/* Row 7: Mfg, Model, Year, Usage (All 1 col each) */}
+            {/* Row 7: 1+1+1+1+1+1+1+1 = 8 */}
             <tr className="h-12">
-              <td className="bg-gray-100 font-bold border-r border-b border-black px-1 align-middle">
-                제조사
+              <td className="bg-gray-100 font-bold border-r-2 border-b-2 border-black p-0 align-middle">
+                <CellContent>제조사</CellContent>
               </td>
-              <td className="border-r border-b border-black font-bold px-1 overflow-hidden truncate align-middle">
-                {data.manufacturer}
+              <td className="border-r-2 border-b-2 border-black font-bold p-0 overflow-hidden align-middle">
+                <CellContent>{data.manufacturer}</CellContent>
               </td>
-              <td className="bg-gray-100 font-bold border-r border-b border-black px-1 align-middle">
-                모델
+              <td className="bg-gray-100 font-bold border-r-2 border-b-2 border-black p-0 align-middle">
+                <CellContent>모델</CellContent>
               </td>
-              <td className="border-r border-b border-black font-bold px-1 overflow-hidden truncate align-middle">
-                {data.model}
+              <td className="border-r-2 border-b-2 border-black font-bold p-0 overflow-hidden align-middle">
+                <CellContent>{data.model}</CellContent>
               </td>
-              <td className="bg-gray-100 font-bold border-r border-b border-black px-1 align-middle">
-                년식
+              <td className="bg-gray-100 font-bold border-r-2 border-b-2 border-black p-0 align-middle">
+                <CellContent>년식</CellContent>
               </td>
-              <td className="border-r border-b border-black font-bold px-1 align-middle">
-                {data.year}
+              <td className="border-r-2 border-b-2 border-black font-bold p-0 align-middle">
+                <CellContent>{data.year}</CellContent>
               </td>
-              <td className="bg-gray-100 font-bold border-r border-b border-black px-1 align-middle">
-                사용시간
+              <td className="bg-gray-100 font-bold border-r-2 border-b-2 border-black p-0 align-middle">
+                <CellContent>사용시간</CellContent>
               </td>
-              <td className="border-r border-b border-black font-bold px-1 align-middle"></td>
+              <td className="border-r-2 border-b-2 border-black font-bold p-0 align-middle">
+                <CellContent></CellContent>
+              </td>
             </tr>
-            {/* Row 8: Asset(2), Vehicle(2), Serial(4) */}
+            {/* Row 8: Asset(1)+Val(1) + VehLabel(1)+Val(1) + SerialLabel(1)+Val(3) = 8 */}
             <tr className="h-12">
-              <td className="bg-gray-100 font-bold border-r border-b border-black px-1">
-                자산번호
+              <td className="bg-gray-100 font-bold border-r-2 border-b-2 border-black p-0 align-middle">
+                <CellContent>자산번호</CellContent>
               </td>
-              <td className="border-r border-b border-black font-bold px-1 overflow-hidden truncate">
-                {data.assetNumber}
+              <td className="border-r-2 border-b-2 border-black font-bold p-0 overflow-hidden align-middle">
+                <CellContent>{data.assetNumber}</CellContent>
               </td>
-              <td className="bg-gray-100 font-bold border-r border-b border-black px-1">
-                차량번호
+              <td className="bg-gray-100 font-bold border-r-2 border-b-2 border-black p-0 align-middle">
+                <CellContent>차량번호</CellContent>
               </td>
-              <td className="border-r border-b border-black font-bold px-1 overflow-hidden truncate">
-                {data.vehicleNumber}
+              <td className="border-r-2 border-b-2 border-black font-bold p-0 overflow-hidden align-middle">
+                <CellContent>{data.vehicleNumber}</CellContent>
               </td>
-              <td className="bg-gray-100 font-bold border-r border-b border-black px-1">
-                차대번호
+              <td className="bg-gray-100 font-bold border-r-2 border-b-2 border-black p-0 align-middle">
+                <CellContent>차대번호</CellContent>
               </td>
-              <td
-                className="text-left px-3 font-bold border-r border-b border-black"
-                colSpan={3}
-              >
-                {data.serialNumber}
+              <td className="border-r-2 border-b-2 border-black font-bold p-0 align-middle" colSpan={3}>
+                <CellContent align="left">{data.serialNumber}</CellContent>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      {/* Footer Row (Excel Row 9) */}
+      {/* Footer Info */}
       <div className="flex justify-between items-center px-2 h-12">
         <div className="flex gap-10">
           <div className="flex items-center gap-2">
             <span className="font-bold text-lg">물류:</span>
-            <span
-              className={`w-12 h-8 flex items-center justify-center font-black ${data.category === "물류" ? "text-black" : "text-transparent"
-                }`}
-            >
+            <span className={`w-12 h-8 border-black flex items-center justify-center text-2xl font-black ${data.category === "물류" ? "text-black" : "text-transparent"}`}>
               O
             </span>
           </div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-lg">건설:</span>
-            <span
-              className={`w-12 h-8 flex items-center justify-center font-black ${data.category === "건설" ? "text-black" : "text-transparent"
-                }`}
-            >
+            <span className={`w-12 h-8 border-black flex items-center justify-center text-2xl font-black ${data.category === "건설" ? "text-black" : "text-transparent"}`}>
               O
             </span>
           </div>
         </div>
-        <div className="text-md">
+        <div className="text-md font-bold">
           양호: V &nbsp; 보통: △ &nbsp; 불량: x &nbsp; 교체: O &nbsp; 해당없음: N
         </div>
       </div>
