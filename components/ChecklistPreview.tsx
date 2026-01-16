@@ -40,57 +40,55 @@ const ChecklistPreview: React.FC<ChecklistPreviewProps> = ({
         <h2 className="text-[28px] font-bold leading-none tracking-tight">
           상품/임가/경,중 체크리스트
         </h2>
+        {qrUrl ? (
+          <div className="flex flex-col items-center gap-1">
+            <div className="text-right mb-1">
+              <span className="text-md font-bold">
+                관리번호:
+                <span className="text-xl font-bold"> {data.mgmtNumber}</span>
+              </span>
+            </div>
+          </div>
+          ) : null}
       </div>
 
-      <div className="flex justify-between items-start mb-4 px-1">
-        <div className="grid grid-cols-2 gap-x-12 gap-y-2 flex-1">
-          <div className="flex items-end gap-2 border-black pb-1 h-14">
-            <span className="text-md font-bold whitespace-nowrap">정비자: {engineerInput}</span>
-            <div className="flex-1"></div>
-          </div>
-          <div className="flex items-end gap-2 border-black pb-1 h-14">
-            <span className="text-md font-bold whitespace-nowrap">QC:</span>
-            <div className="flex-1"></div>
-          </div>
-          <div className="flex items-end gap-2 border-black pb-1 h-14">
+      <div className="flex justify-between items-center mb-4 px-1">
+        <div className="grid grid-cols-4 gap-x-12 gap-y-2 flex-1">
+          <div className="flex items-center gap-2 border-black pb-1 h-14">
             <span className="text-md font-bold whitespace-nowrap">정비 일자:</span>
             <div className="flex-1 text-md">{yyyy}.</div>
           </div>
-          <div className="flex items-end gap-2 border-black pb-1 h-14">
+          <div className="flex items-center gap-2 border-black pb-1 h-14">
+            <span className="text-md font-bold whitespace-nowrap">정비자: {engineerInput}</span>
+            <div className="flex-1"></div>
+          </div>
+          <div className="flex items-center gap-2 border-black pb-1 h-14">
             <span className="text-md font-bold whitespace-nowrap">QC 일자:</span>
             <div className="flex-1 text-md">{yyyy}.</div>
+          </div>
+          <div className="flex items-center gap-2 border-black pb-1 h-14">
+            <span className="text-md font-bold whitespace-nowrap">QC:</span>
+            <div className="flex-1"></div>
           </div>
         </div>
 
         <div className="ml-8 p-1 bg-white flex items-center justify-center">
-          {qrUrl ? (
-            <div className="flex flex-col items-center gap-1">
-              <div className="text-right mb-1">
-                <span className="text-md font-bold">
-                  관리번호:
-                  <span className="text-xl font-bold"> {data.mgmtNumber}</span>
-                </span>
-              </div>
-              <img src={qrUrl} alt="QR" className="w-24 h-24 block" />
-            </div>
-          ) : (
-            <div className="w-24 h-24 bg-gray-50 border border-dashed border-gray-300" />
-          )}
-        </div>
+              <img src={qrUrl} alt="QR" className="w-24 h-24 block" /></div>
+           
       </div>
 
-      {/* Main Table: Precise 8-column layout (12.5% each) */}
+      {/* Main Table: Precise 8-column layout (8.33% each) */}
       <div className="w-full mb-4">
-        <table className="w-full border-t-2 border-l-2 border-black text-[14px] table-fixed border-separate border-spacing-0">
+        <table className="w-full border-t-2 border-l-2 border-black text-[12px] table-fixed border-separate border-spacing-0">
           <colgroup>
-            <col className="w-[12.5%]" />
-            <col className="w-[12.5%]" />
-            <col className="w-[12.5%]" />
-            <col className="w-[12.5%]" />
-            <col className="w-[12.5%]" />
-            <col className="w-[12.5%]" />
-            <col className="w-[12.5%]" />
-            <col className="w-[12.5%]" />
+            <col className="w-[8.33%]" />
+            <col className="w-[16.66%]" />
+            <col className="w-[8.33%]" />
+            <col className="w-[16.66%]" />
+            <col className="w-[8.33%]" />
+            <col className="w-[16.66%]" />
+            <col className="w-[8.33%]" />
+            <col className="w-[16.66%]" />
           </colgroup>
           <tbody>
             {/* Row 6: Code(1) + Val(1) + NameLabel(1) + NameVal(5) = 8 */}
@@ -163,7 +161,7 @@ const ChecklistPreview: React.FC<ChecklistPreviewProps> = ({
       {/* Footer Info */}
       <div className="flex justify-between items-center px-2 h-12">
         <div className="flex gap-10">
-          <div className="flex items-center gap-2">
+          <div className="flex items-end gap-2">
             <span className="font-bold text-lg">물류:</span>
             <span className={`w-12 h-8 border-black flex items-center justify-center text-2xl font-black ${data.category === "물류" ? "text-black" : "text-transparent"}`}>
               O

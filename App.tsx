@@ -62,6 +62,14 @@ const App: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // 엑셀 데이터에서 맨 앞의 ' 기호를 제거하는 헬퍼 함수
+  const removeLeadingQuote = (str: string): string => {
+    if (str && str.startsWith("'")) {
+      return str.slice(1);
+    }
+    return str;
+  };
+
   const handleSearch = () => {
     if (!masterData.length) {
       alert("먼저 마스터 엑셀 파일을 업로드해 주세요.");
@@ -91,16 +99,16 @@ const App: React.FC = () => {
         else if (status.includes("B")) category = "건설";
 
         foundChecklists.push({
-          mgmtNumber: trimmedMgmt,
-          productCode: String(foundRow[MASTER_COLUMNS.PROD_NO] || ""),
-          productName: String(foundRow[MASTER_COLUMNS.PROD_NAME] || ""),
-          manufacturer: String(foundRow[MASTER_COLUMNS.MANUFACTURER] || ""),
-          model: String(foundRow[MASTER_COLUMNS.MODEL_NAME] || ""),
-          year: String(foundRow[MASTER_COLUMNS.PROD_YEAR] || ""),
+          mgmtNumber: removeLeadingQuote(trimmedMgmt),
+          productCode: removeLeadingQuote(String(foundRow[MASTER_COLUMNS.PROD_NO] || "")),
+          productName: removeLeadingQuote(String(foundRow[MASTER_COLUMNS.PROD_NAME] || "")),
+          manufacturer: removeLeadingQuote(String(foundRow[MASTER_COLUMNS.MANUFACTURER] || "")),
+          model: removeLeadingQuote(String(foundRow[MASTER_COLUMNS.MODEL_NAME] || "")),
+          year: removeLeadingQuote(String(foundRow[MASTER_COLUMNS.PROD_YEAR] || "")),
           usageTime: "",
-          assetNumber: String(foundRow[MASTER_COLUMNS.ASSET_NO] || ""),
-          vehicleNumber: String(foundRow[MASTER_COLUMNS.VEHICLE_NO] || ""),
-          serialNumber: String(foundRow[MASTER_COLUMNS.SERIAL_NO] || ""),
+          assetNumber: removeLeadingQuote(String(foundRow[MASTER_COLUMNS.ASSET_NO] || "")),
+          vehicleNumber: removeLeadingQuote(String(foundRow[MASTER_COLUMNS.VEHICLE_NO] || "")),
+          serialNumber: removeLeadingQuote(String(foundRow[MASTER_COLUMNS.SERIAL_NO] || "")),
           category: category,
         });
       } else {
