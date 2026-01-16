@@ -117,24 +117,35 @@ const App: React.FC = () => {
     }
   };
 
+
+  const getDate = () => {
+    const today = new Date();
+    const yyyy_mm_dd = `${today.getFullYear().toString().padStart(2, "0")}.${(today.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}.${today.getDate().toString().padStart(2, "0")}`.split(".").join("");
+    return (yyyy_mm_dd)
+  }
+
   const handleExcelExport = () => {
+    const yyyy_mm_dd = getDate();
     if (currentChecklists.length === 0) return;
     const downloadName =
       currentChecklists.length === 1
-        ? `Checklist_${currentChecklists[0].mgmtNumber}.xlsx`
-        : `Checklists_Batch_${currentChecklists.length}pcs.xlsx`;
+        ? `정비_체크리스트_${currentChecklists[0].mgmtNumber}_${yyyy_mm_dd}.xlsx`
+        : `정비_체크리스트_${yyyy_mm_dd}.xlsx`;
 
     downloadChecklistExcel(currentChecklists, engineerInput, downloadName);
   };
 
   const handlePdfExport = async () => {
+    const yyyy_mm_dd = getDate();
     if (currentChecklists.length === 0) return;
     setIsExportingPdf(true);
     try {
       const downloadName =
         currentChecklists.length === 1
-          ? `Checklist_${currentChecklists[0].mgmtNumber}.pdf`
-          : `Checklists_Batch_${currentChecklists.length}pcs.pdf`;
+          ? `정비_체크리스트_${currentChecklists[0].mgmtNumber}_${yyyy_mm_dd}.pdf`
+          : `정비_체크리스트_${yyyy_mm_dd}.pdf`;
 
       await downloadChecklistPDF("checklist-container", downloadName);
     } catch (err) {
@@ -204,11 +215,10 @@ const App: React.FC = () => {
         </section>
 
         <section
-          className={`bg-white p-6 rounded-xl shadow-md border border-gray-200 transition-opacity ${
-            !masterData.length
-              ? "opacity-50 pointer-events-none"
-              : "opacity-100"
-          }`}
+          className={`bg-white p-6 rounded-xl shadow-md border border-gray-200 transition-opacity ${!masterData.length
+            ? "opacity-50 pointer-events-none"
+            : "opacity-100"
+            }`}
         >
           <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-800 mb-4">
             <Search className="w-5 h-5 text-blue-600" />
@@ -230,11 +240,10 @@ const App: React.FC = () => {
         </section>
 
         <section
-          className={`bg-white p-6 rounded-xl shadow-md border border-gray-200 transition-opacity ${
-            !masterData.length
-              ? "opacity-50 pointer-events-none"
-              : "opacity-100"
-          }`}
+          className={`bg-white p-6 rounded-xl shadow-md border border-gray-200 transition-opacity ${!masterData.length
+            ? "opacity-50 pointer-events-none"
+            : "opacity-100"
+            }`}
         >
           <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-800 mb-4">
             <UserRoundPen className="w-5 h-5 text-blue-600" />

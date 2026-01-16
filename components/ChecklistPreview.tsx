@@ -42,24 +42,24 @@ const ChecklistPreview: React.FC<ChecklistPreviewProps> = ({
         <div className="grid grid-cols-2 gap-x-12 gap-y-2 flex-1">
           {/* Using border-black for better PDF visibility */}
           <div className="flex items-end gap-2 pb-1 h-14">
-            <span className="text-sm font-bold whitespace-nowrap">정비자: {engineerInput}</span>
+            <span className="text-md font-bold whitespace-nowrap">정비자: {engineerInput}</span>
             <div className="flex-1"></div>
           </div>
           <div className="flex items-end gap-2 pb-1 h-14">
-            <span className="text-sm font-bold whitespace-nowrap">QC:</span>
+            <span className="text-md font-bold whitespace-nowrap">QC:</span>
             <div className="flex-1"></div>
           </div>
           <div className="flex items-end gap-2 pb-1 h-14">
-            <span className="text-sm font-bold whitespace-nowrap">
+            <span className="text-md font-bold whitespace-nowrap">
               정비 일자:
             </span>
-            <div className="flex-1 text-sm">{yyyy}.</div>
+            <div className="flex-1 text-md">{yyyy}.</div>
           </div>
           <div className="flex items-end gap-2 pb-1 h-14">
-            <span className="text-sm font-bold whitespace-nowrap">
+            <span className="text-md font-bold whitespace-nowrap">
               QC 일자:
             </span>
-            <div className="flex-1 text-sm">{yyyy}.</div>
+            <div className="flex-1 text-md">{yyyy}.</div>
           </div>
         </div>
 
@@ -67,12 +67,12 @@ const ChecklistPreview: React.FC<ChecklistPreviewProps> = ({
         <div className="ml-8 p-1 bg-white flex items-center justify-center">
           {qrUrl ? (
             <div className="flex flex-col items-center gap-0.5">
-              <img src={qrUrl} alt="QR" className="w-24 h-24 block" />
               <div className="text-right">
-                <span className="text-base font-bold text-xs">
+                <span className="text-lg font-bold ">
                   관리번호: {data.mgmtNumber}
                 </span>
               </div>
+              <img src={qrUrl} alt="QR" className="w-24 h-24 block" />
             </div>
           ) : (
             <div className="w-24 h-24 bg-gray-50" />
@@ -82,7 +82,7 @@ const ChecklistPreview: React.FC<ChecklistPreviewProps> = ({
 
       {/* Main Table: Strict 8-column layout (1/8 = 12.5% each) */}
       <div className="w-full mb-4">
-        <table className="w-full border-t border-l border-black text-[14px] text-center table-fixed border-separate border-spacing-0">
+        <table className="w-full border-t border-l border-black text-[16px] text-center table-fixed border-separate border-spacing-0">
           <colgroup>
             <col className="w-[12.5%]" />
             <col className="w-[12.5%]" />
@@ -169,28 +169,26 @@ const ChecklistPreview: React.FC<ChecklistPreviewProps> = ({
       <div className="flex justify-between items-center px-2 h-12">
         <div className="flex gap-10">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-base">물류:</span>
+            <span className="font-bold text-lg">물류:</span>
             <span
-              className={`w-12 h-8 flex items-center justify-center font-black ${
-                data.category === "물류" ? "text-black" : "text-transparent"
-              }`}
+              className={`w-12 h-8 flex items-center justify-center font-black ${data.category === "물류" ? "text-black" : "text-transparent"
+                }`}
             >
               O
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-base">건설:</span>
+            <span className="font-bold text-lg">건설:</span>
             <span
-              className={`w-12 h-8 flex items-center justify-center font-black ${
-                data.category === "건설" ? "text-black" : "text-transparent"
-              }`}
+              className={`w-12 h-8 flex items-center justify-center font-black ${data.category === "건설" ? "text-black" : "text-transparent"
+                }`}
             >
               O
             </span>
           </div>
         </div>
-        <div className="text-sm">
-          양호: o &nbsp; 보통: △ &nbsp; 불량: x &nbsp; 해당없음: N
+        <div className="text-md">
+          양호: V &nbsp; 보통: △ &nbsp; 불량: x &nbsp; 교체: O &nbsp; 해당없음: N
         </div>
       </div>
     </div>
