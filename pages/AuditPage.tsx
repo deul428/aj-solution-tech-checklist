@@ -12,9 +12,12 @@ import {
   Calendar,
   XCircle,
   Undo2,
-  CameraOff
+  CameraOff,
+  Download,
+  X
 } from "lucide-react";
 import { MasterDataRow, MASTER_COLUMNS, AUDIT_COLUMNS } from "../types";
+import { exportMasterWithAudit } from "../services/excelService";
 
 interface AuditPageProps {
   masterData: MasterDataRow[];
@@ -24,14 +27,15 @@ interface AuditPageProps {
 const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
   const [scannedResult, setScannedResult] = useState<string | null>(null);
   const [foundRow, setFoundRow] = useState<MasterDataRow | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const [auditHistory, setAuditHistory] = useState<MasterDataRow[]>([]);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
-    // Filter audited items from masterData
+    // Filter audited items from masterData, sorted by date (if available) or just current session
     const audited = masterData.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
-    setAuditHistory(audited);
+    setAuditHistory(audited.reverse()); // Show newest first
   }, [masterData]);
 
   useEffect(() => {
@@ -46,16 +50,14 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
           aspectRatio: 1.0,
           showTorchButtonIfSupported: true,
         },
-        /* verbose= */ false
+        false
       );
 
       scannerRef.current.render(
         (decodedText) => {
           handleScanSuccess(decodedText);
         },
-        (error) => {
-          // Frame error (no QR in view) - normal behavior
-        }
+        () => {}
       );
     } catch (err) {
       console.error("Scanner init error:", err);
@@ -70,10 +72,12 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
   }, []);
 
   const handleScanSuccess = (decodedText: string) => {
+    // Don't process if modal is already open
+    if (showModal) return;
+
     const trimmedText = decodedText.trim();
     setScannedResult(trimmedText);
 
-    // Find in masterData by MGMT_NO or ASSET_NO
     const match = masterData.find(row => 
       String(row[MASTER_COLUMNS.MGMT_NO] || "").trim() === trimmedText ||
       String(row[MASTER_COLUMNS.ASSET_NO] || "").trim() === trimmedText
@@ -81,10 +85,13 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
 
     if (match) {
       setFoundRow(match);
-      // Optional: stop scanning after find to save resources
-      // scannerRef.current?.pause(); 
+      setShowModal(true);
+      // Pause scanner UI feedback
+      try { scannerRef.current?.pause(true); } catch(e) {}
     } else {
       setFoundRow(null);
+      setShowModal(true); // Still show modal for "Not Found" state
+      try { scannerRef.current?.pause(true); } catch(e) {}
     }
   };
 
@@ -94,7 +101,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     const today = new Date();
     const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
     
-    // Update masterData state
     setMasterData(prev => prev.map(row => {
       if (row[MASTER_COLUMNS.MGMT_NO] === foundRow[MASTER_COLUMNS.MGMT_NO]) {
         return {
@@ -106,24 +112,43 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
       return row;
     }));
 
-    setScannedResult(null);
-    setFoundRow(null);
-    alert("실사 기록이 완료되었습니다.");
+    closeModal();
   };
 
-  const resetScanner = () => {
+  const closeModal = () => {
+    setShowModal(false);
     setScannedResult(null);
     setFoundRow(null);
-    // if (scannerRef.current) scannerRef.current.resume();
+    try { scannerRef.current?.resume(); } catch(e) {}
+  };
+
+  const handleExport = () => {
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+    exportMasterWithAudit(masterData, `자산실사결과_${dateStr}.xlsx`);
   };
 
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="bg-purple-600 p-2 rounded-lg text-white">
-          <ScanQrCode className="w-6 h-6" />
+    <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 relative">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-3">
+          <div className="bg-purple-600 p-2 rounded-lg text-white">
+            <ScanQrCode className="w-6 h-6" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">현장 자산 실사</h2>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900">현장 자산 실사</h2>
+        
+        <button 
+          onClick={handleExport}
+          disabled={auditHistory.length === 0}
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-md ${
+            auditHistory.length > 0 
+              ? "bg-green-600 text-white hover:bg-green-700 active:scale-95" 
+              : "bg-gray-200 text-gray-400 cursor-not-allowed"
+          }`}
+        >
+          <Download className="w-5 h-5" /> 실사 결과 엑셀 다운로드
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -132,153 +157,138 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
             <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
               <span className="font-semibold text-gray-700 flex items-center gap-2">
-                <ScanQrCode className="w-4 h-4 text-purple-600" /> 카메라 스캔
+                <ScanQrCode className="w-4 h-4 text-purple-600" /> 카메라 스캐너
               </span>
-              {scannedResult && (
-                <button 
-                  onClick={resetScanner}
-                  className="text-gray-400 hover:text-gray-600 text-xs flex items-center gap-1"
-                >
-                  <Undo2 className="w-3 h-3" /> 재스캔
-                </button>
-              )}
             </div>
             
-            <div className="p-4 bg-gray-900 min-h-[300px] flex items-center justify-center relative">
+            <div className="p-4 bg-gray-900 min-h-[350px] flex items-center justify-center relative">
               {cameraError && (
                 <div className="absolute inset-0 z-10 bg-gray-900 flex flex-col items-center justify-center text-white p-6 text-center">
                   <CameraOff className="w-12 h-12 text-red-500 mb-4" />
                   <p className="font-bold mb-2">카메라를 사용할 수 없습니다</p>
-                  <p className="text-sm text-gray-400">브라우저 설정에서 카메라 권한을 허용했는지 확인해 주세요.</p>
+                  <p className="text-sm text-gray-400">권한 설정을 확인해 주세요.</p>
                 </div>
               )}
               <div id="qr-reader" className="qr-scanner-container w-full overflow-hidden"></div>
-              
-              {!cameraError && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-white/50 bg-black/40 px-3 py-1 rounded-full pointer-events-none">
-                  화면 중앙에 QR 코드를 맞춰주세요
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <History className="w-5 h-5 text-purple-600" /> 실사 현황
-            </h3>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-              {auditHistory.length === 0 ? (
-                <p className="text-gray-400 text-sm py-8 text-center">아직 완료된 실사가 없습니다.</p>
-              ) : (
-                auditHistory.map((row, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-green-50 rounded-xl border border-green-100 transition-all hover:bg-green-100">
-                    <div>
-                      <p className="text-sm font-bold text-green-900">{row[MASTER_COLUMNS.MGMT_NO]}</p>
-                      <p className="text-xs text-green-700 truncate max-w-[150px]">{row[MASTER_COLUMNS.PROD_NAME]}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-medium text-green-600">{row[AUDIT_COLUMNS.DATE]}</p>
-                      <span className="text-[10px] bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">완료</span>
-                    </div>
-                  </div>
-                ))
-              )}
+              <div className="absolute top-4 right-4 animate-pulse">
+                <div className="w-3 h-3 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Result Column */}
-        <div className="space-y-6">
-          {!scannedResult ? (
-            <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-2xl p-20 flex flex-col items-center justify-center text-gray-400">
-              <ScanQrCode className="w-16 h-16 mb-4 opacity-20" />
-              <p className="font-medium">QR 코드를 스캔해 주세요.</p>
-              <p className="text-xs mt-2 opacity-50">자산번호 또는 관리번호가 인식됩니다.</p>
-            </div>
-          ) : !foundRow ? (
-            <div className="bg-red-50 border border-red-100 rounded-2xl p-10 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-300">
-              <XCircle className="w-16 h-16 text-red-500 mb-4" />
-              <h4 className="text-xl font-bold text-red-900 mb-2">조회 결과 없음</h4>
-              <p className="text-red-700 mb-1">스캔한 값: <span className="font-mono font-bold text-red-900 underline">{scannedResult}</span></p>
-              <p className="text-red-500 text-xs mb-6">마스터 데이터에 해당 관리번호가 없습니다.</p>
-              <button 
-                onClick={resetScanner}
-                className="bg-red-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-red-700 transition-all"
-              >
-                다시 시도
-              </button>
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl shadow-xl border border-purple-100 overflow-hidden animate-in slide-in-from-right-4 duration-300">
-              <div className="bg-purple-600 p-6 text-white">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-purple-200 text-xs font-bold uppercase tracking-wider">Scanned Asset</span>
-                    <h3 className="text-3xl font-black mt-1 leading-none">{foundRow[MASTER_COLUMNS.MGMT_NO]}</h3>
-                  </div>
-                  <div className="bg-white/20 p-2 rounded-lg">
-                    <Package className="w-6 h-6" />
-                  </div>
-                </div>
+        {/* History Column */}
+        <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 h-full min-h-[500px] flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <History className="w-5 h-5 text-purple-600" /> 실사 완료 리스트
+            </h3>
+            <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold">
+              총 {auditHistory.length}건
+            </span>
+          </div>
+
+          <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+            {auditHistory.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                <Package className="w-12 h-12 mb-3 opacity-20" />
+                <p className="text-sm">실사 완료된 자산이 여기에 표시됩니다.</p>
               </div>
-
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                    <div className="flex items-center gap-2 text-gray-400 mb-1">
-                      <Tag className="w-3 h-3" /> <span className="text-[10px] font-bold uppercase">자산번호</span>
+            ) : (
+              auditHistory.map((row, idx) => (
+                <div key={`${row[MASTER_COLUMNS.MGMT_NO]}-${idx}`} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 transition-all hover:border-purple-200 hover:bg-purple-50 group">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-white p-2 rounded-lg shadow-sm group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                      <Package className="w-5 h-5" />
                     </div>
-                    <p className="font-bold text-gray-800 truncate">{foundRow[MASTER_COLUMNS.ASSET_NO] || '-'}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                    <div className="flex items-center gap-2 text-gray-400 mb-1">
-                      <User className="w-3 h-3" /> <span className="text-[10px] font-bold uppercase">제조사</span>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">{row[MASTER_COLUMNS.MGMT_NO]}</p>
+                      <p className="text-xs text-gray-500 truncate max-w-[180px]">{row[MASTER_COLUMNS.PROD_NAME]}</p>
                     </div>
-                    <p className="font-bold text-gray-800 truncate">{foundRow[MASTER_COLUMNS.MANUFACTURER] || '-'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter mb-1">Audit Date</p>
+                    <p className="text-xs font-black text-purple-600">{row[AUDIT_COLUMNS.DATE]}</p>
                   </div>
                 </div>
-
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                  <div className="text-gray-400 text-[10px] font-bold uppercase mb-1">상품 정보</div>
-                  <p className="font-bold text-gray-800 text-lg leading-tight mb-1">{foundRow[MASTER_COLUMNS.PROD_NAME]}</p>
-                  <p className="text-xs text-gray-500">코드: {foundRow[MASTER_COLUMNS.PROD_NO]}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm bg-gray-50/50 p-4 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-500">제조년도:</span>
-                    <span className="font-bold text-gray-800">{foundRow[MASTER_COLUMNS.PROD_YEAR] || '-'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-500">상태:</span>
-                    <span className="font-bold text-gray-800">{foundRow[MASTER_COLUMNS.EQUIP_STATUS] || '-'}</span>
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  {foundRow[AUDIT_COLUMNS.STATUS] === 'O' ? (
-                    <div className="flex flex-col items-center justify-center gap-1 text-green-600 bg-green-50 py-4 rounded-xl font-bold border border-green-200">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-5 h-5" /> 이미 실사 완료됨
-                      </div>
-                      <span className="text-xs opacity-70">기록일: {foundRow[AUDIT_COLUMNS.DATE]}</span>
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={confirmAudit}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-4 rounded-xl shadow-lg shadow-purple-200 transition-all flex items-center justify-center gap-2 text-lg active:scale-95"
-                    >
-                      <CheckCircle className="w-6 h-6" /> 실사 확인 완료
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Audit Confirmation Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+            {foundRow ? (
+              <>
+                <div className="bg-purple-600 p-6 text-white relative">
+                  <button onClick={closeModal} className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="bg-white/20 p-2 rounded-xl">
+                      <ScanQrCode className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-widest text-purple-200">Asset Identified</span>
+                  </div>
+                  <h3 className="text-3xl font-black">{foundRow[MASTER_COLUMNS.MGMT_NO]}</h3>
+                </div>
+
+                <div className="p-8 space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">자산번호</span>
+                      <p className="font-bold text-gray-800">{foundRow[MASTER_COLUMNS.ASSET_NO] || '-'}</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">제조사</span>
+                      <p className="font-bold text-gray-800">{foundRow[MASTER_COLUMNS.MANUFACTURER] || '-'}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">상품 정보</span>
+                    <p className="font-bold text-gray-800 text-lg leading-tight">{foundRow[MASTER_COLUMNS.PROD_NAME]}</p>
+                    <p className="text-xs text-gray-400 mt-2">Model: {foundRow[MASTER_COLUMNS.MODEL_NAME] || 'N/A'}</p>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button 
+                      onClick={closeModal}
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-4 rounded-2xl transition-all"
+                    >
+                      취소
+                    </button>
+                    <button 
+                      onClick={confirmAudit}
+                      className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-purple-200 flex items-center justify-center gap-2 transition-all active:scale-95"
+                    >
+                      <CheckCircle className="w-5 h-5" /> 실사 확인 완료
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="p-10 text-center">
+                <div className="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <XCircle className="w-10 h-10 text-red-500" />
+                </div>
+                <h4 className="text-2xl font-bold text-gray-900 mb-2">자산을 찾을 수 없음</h4>
+                <p className="text-gray-500 mb-2">스캔된 코드: <span className="font-mono font-bold text-red-600">{scannedResult}</span></p>
+                <p className="text-sm text-gray-400 mb-8">마스터 데이터에 등록되지 않은 관리번호입니다.</p>
+                <button 
+                  onClick={closeModal}
+                  className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl hover:bg-black transition-all"
+                >
+                  닫기 및 재시도
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
