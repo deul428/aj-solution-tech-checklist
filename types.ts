@@ -1,6 +1,8 @@
 
 export interface MasterDataRow {
   [key: string]: any;
+  '자산실사일'?: string;
+  '자산실사 여부'?: string;
 }
 
 export interface ChecklistData {
@@ -28,14 +30,9 @@ export const MASTER_COLUMNS = {
   VEHICLE_NO: '차량번호',
   SERIAL_NO: '시리얼번호',
   EQUIP_STATUS: '장비상태'
-  // MGMT_NO: '관리번호',
-  // PROD_NO: '상품번호',
-  // PROD_NAME: '상품명',
-  // MANUFACTURER: '제조사',
-  // MODEL_NAME: '모델명',
-  // PROD_YEAR: '제조년도',
-  // ASSET_NO: '자산번호',
-  // VEHICLE_NO: '차량번호',
-  // SERIAL_NO: '시리얼번호',
-  // EQUIP_STATUS: '장비상태'
+};
+
+export const AUDIT_COLUMNS = {
+  DATE: '자산실사일',
+  STATUS: '자산실사 여부'
 };
