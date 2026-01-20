@@ -14,7 +14,8 @@ import {
   Undo2,
   CameraOff,
   Download,
-  X
+  X,
+  Clock
 } from "lucide-react";
 import { MasterDataRow, MASTER_COLUMNS, AUDIT_COLUMNS } from "../types";
 import { exportMasterWithAudit } from "../services/excelService";
@@ -30,12 +31,13 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
   const [showModal, setShowModal] = useState(false);
   const [auditHistory, setAuditHistory] = useState<MasterDataRow[]>([]);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isCoolingDown, setIsCoolingDown] = useState(false);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
-    // Filter audited items from masterData, sorted by date (if available) or just current session
+    // Filter audited items and show newest first
     const audited = masterData.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
-    setAuditHistory(audited.reverse()); // Show newest first
+    setAuditHistory([...audited].reverse()); 
   }, [masterData]);
 
   useEffect(() => {
@@ -72,8 +74,8 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
   }, []);
 
   const handleScanSuccess = (decodedText: string) => {
-    // Don't process if modal is already open
-    if (showModal) return;
+    // 쿨다운 중이거나 모달이 이미 열려있으면 스캔 무시
+    if (showModal || isCoolingDown) return;
 
     const trimmedText = decodedText.trim();
     setScannedResult(trimmedText);
@@ -86,11 +88,10 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     if (match) {
       setFoundRow(match);
       setShowModal(true);
-      // Pause scanner UI feedback
       try { scannerRef.current?.pause(true); } catch(e) {}
     } else {
       setFoundRow(null);
-      setShowModal(true); // Still show modal for "Not Found" state
+      setShowModal(true); 
       try { scannerRef.current?.pause(true); } catch(e) {}
     }
   };
@@ -119,18 +120,41 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     setShowModal(false);
     setScannedResult(null);
     setFoundRow(null);
+    
+    // 모달 닫힌 후 1.5초 쿨다운 시작
+    setIsCoolingDown(true);
+    
+    // 스캐너 재개
     try { scannerRef.current?.resume(); } catch(e) {}
+
+    setTimeout(() => {
+      setIsCoolingDown(false);
+    }, 1500);
   };
 
-  const handleExport = () => {
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-    exportMasterWithAudit(masterData, `자산실사결과_${dateStr}.xlsx`);
+  const handleExport = (e: React.MouseEvent) => {
+    // 이벤트 전파 방지 및 기본 동작 방지 (라우팅 방지)
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (masterData.length === 0) {
+      alert("내보낼 데이터가 없습니다.");
+      return;
+    }
+
+    try {
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+      exportMasterWithAudit(masterData, `자산실사결과_${dateStr}.xlsx`);
+    } catch (error) {
+      console.error("Export error:", error);
+      alert("엑셀 파일을 생성하는 중 오류가 발생했습니다.");
+    }
   };
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 relative">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 no-print">
         <div className="flex items-center gap-3">
           <div className="bg-purple-600 p-2 rounded-lg text-white">
             <ScanQrCode className="w-6 h-6" />
@@ -139,11 +163,12 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
         </div>
         
         <button 
+          type="button"
           onClick={handleExport}
           disabled={auditHistory.length === 0}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-md ${
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 ${
             auditHistory.length > 0 
-              ? "bg-green-600 text-white hover:bg-green-700 active:scale-95" 
+              ? "bg-green-600 text-white hover:bg-green-700 cursor-pointer" 
               : "bg-gray-200 text-gray-400 cursor-not-allowed"
           }`}
         >
@@ -159,6 +184,11 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
               <span className="font-semibold text-gray-700 flex items-center gap-2">
                 <ScanQrCode className="w-4 h-4 text-purple-600" /> 카메라 스캐너
               </span>
+              {isCoolingDown && (
+                <span className="text-xs font-bold text-orange-500 flex items-center gap-1 animate-pulse">
+                  <Clock className="w-3 h-3" /> 대기 중...
+                </span>
+              )}
             </div>
             
             <div className="p-4 bg-gray-900 min-h-[350px] flex items-center justify-center relative">
@@ -170,9 +200,12 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
                 </div>
               )}
               <div id="qr-reader" className="qr-scanner-container w-full overflow-hidden"></div>
-              <div className="absolute top-4 right-4 animate-pulse">
-                <div className="w-3 h-3 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
-              </div>
+              
+              {!cameraError && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-white/50 bg-black/40 px-3 py-1 rounded-full pointer-events-none z-10">
+                  {isCoolingDown ? "잠시만 기다려주세요..." : "화면 중앙에 QR 코드를 맞춰주세요"}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -256,12 +289,14 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
 
                   <div className="flex gap-3 pt-2">
                     <button 
+                      type="button"
                       onClick={closeModal}
                       className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-4 rounded-2xl transition-all"
                     >
                       취소
                     </button>
                     <button 
+                      type="button"
                       onClick={confirmAudit}
                       className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-purple-200 flex items-center justify-center gap-2 transition-all active:scale-95"
                     >
@@ -279,6 +314,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
                 <p className="text-gray-500 mb-2">스캔된 코드: <span className="font-mono font-bold text-red-600">{scannedResult}</span></p>
                 <p className="text-sm text-gray-400 mb-8">마스터 데이터에 등록되지 않은 관리번호입니다.</p>
                 <button 
+                  type="button"
                   onClick={closeModal}
                   className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl hover:bg-black transition-all"
                 >
