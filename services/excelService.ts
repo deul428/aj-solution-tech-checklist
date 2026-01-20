@@ -2,10 +2,10 @@
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import QRCode from "qrcode";
-import { MasterDataRow, ChecklistData } from "../types";
+import { MasterDataRow, ChecklistData, AUDIT_COLUMNS } from "../types";
 
 /**
- * Parses an uploaded Excel file into JSON data using XLSX 0.18.5.
+ * Parses an uploaded Excel file into JSON data.
  */
 export const parseMasterExcel = (file: File): Promise<MasterDataRow[]> => {
   return new Promise((resolve, reject) => {
@@ -28,7 +28,28 @@ export const parseMasterExcel = (file: File): Promise<MasterDataRow[]> => {
 };
 
 /**
- * Exports the updated master data including audit results to a new Excel file.
+ * SIMULATION: Sends audited data to a shared cloud sheet.
+ * In a real-world app, this would be a fetch() call to a Google Apps Script or a backend API.
+ */
+export const syncAuditDataToCloud = async (data: MasterDataRow[]): Promise<{ success: boolean; count: number }> => {
+  return new Promise((resolve) => {
+    // 실사 완료된 데이터만 필터링
+    const auditedItems = data.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
+    
+    console.log("Sending to Shared Sheet:", auditedItems);
+    
+    // API 통신 시뮬레이션 (1.5초 대기)
+    setTimeout(() => {
+      resolve({
+        success: true,
+        count: auditedItems.length
+      });
+    }, 1500);
+  });
+};
+
+/**
+ * Exports the updated master data including audit results to a new Excel file (Fallback).
  */
 export const exportMasterWithAudit = (data: MasterDataRow[], fileName: string = "master_audit_result.xlsx") => {
   const worksheet = XLSX.utils.json_to_sheet(data);
@@ -49,7 +70,6 @@ export const downloadChecklistExcel = async (
   const ITEMS_PER_SHEET = 3;
   const ROWS_PER_BLOCK = 10;
 
-  // Styles definition
   const thinBorder: Partial<ExcelJS.Borders> = {
     top: { style: "thin" },
     left: { style: "thin" },
@@ -75,12 +95,6 @@ export const downloadChecklistExcel = async (
     alignment: { horizontal: "left", vertical: "middle", indent: 1 },
   };
 
-  const infoStyle: Partial<ExcelJS.Style> = {
-    font: { size: 14, name: "Malgun Gothic" },
-    alignment: { vertical: "middle" },
-  };
-
-  // Group data by 3 per sheet
   for (let i = 0; i < dataList.length; i += ITEMS_PER_SHEET) {
     const chunk = dataList.slice(i, i + ITEMS_PER_SHEET);
     const sheetIndex = Math.floor(i / ITEMS_PER_SHEET) + 1;
@@ -88,21 +102,14 @@ export const downloadChecklistExcel = async (
     const worksheet = workbook.addWorksheet(sheetName);
 
     worksheet.columns = [
-      { width: 10 }, // A
-      { width: 20 }, // B
-      { width: 10 }, // C
-      { width: 20 }, // D
-      { width: 10 }, // E
-      { width: 20 }, // F
-      { width: 10 }, // G
-      { width: 20 }, // H
+      { width: 10 }, { width: 20 }, { width: 10 }, { width: 20 },
+      { width: 10 }, { width: 20 }, { width: 10 }, { width: 20 },
     ];
 
     for (let j = 0; j < chunk.length; j++) {
       const data = chunk[j];
       const rowOffset = j * ROWS_PER_BLOCK;
       const startRow = rowOffset + 1;
-
       const today = new Date();
       const yyyy = today.getFullYear().toString();
 
@@ -115,29 +122,19 @@ export const downloadChecklistExcel = async (
       titleCell.alignment = { horizontal: "left", vertical: "middle" };
 
       worksheet.mergeCells(`F${startRow}:G${startRow}`);
-      const mgmtCell_01 = worksheet.getCell(`F${startRow}`);
-      mgmtCell_01.value = `관리번호: `;
-      mgmtCell_01.style = { font: { size: 16, name: "Malgun Gothic" }, alignment: { horizontal: 'right' } };
+      worksheet.getCell(`F${startRow}`).value = `관리번호: `;
+      worksheet.getCell(`F${startRow}`).style = { font: { size: 16, name: "Malgun Gothic" }, alignment: { horizontal: 'right' } };
 
       const mgmtCell = worksheet.getCell(`H${startRow}`);
       mgmtCell.value = `${data.mgmtNumber}`;
       mgmtCell.font = { size: 20, bold: true, name: "Malgun Gothic" };
       mgmtCell.alignment = { vertical: "bottom", horizontal: 'center' };
 
-      const row2 = worksheet.getRow(startRow + 1);
-      row2.height = 10;
-      worksheet.mergeCells(`A${startRow + 1}:H${startRow + 1}`);
-
       const row3 = worksheet.getRow(startRow + 2);
       row3.height = 160;
       worksheet.mergeCells(`A${startRow + 2}:G${startRow + 2}`);
       worksheet.getCell(`A${startRow + 2}`).value = `정비일자: ${yyyy}                    정비자: ${engineerInput}                    QC일자: ${yyyy}                    QC:`;
       worksheet.getCell(`A${startRow + 2}`).style = { font: { size: 12 }, alignment: { vertical: 'middle', horizontal: 'left' } };
-
-      const row4 = worksheet.getRow(startRow + 3);
-      row4.height = 40;
-      const row5 = worksheet.getRow(startRow + 4);
-      row5.height = 0;
 
       const row6 = worksheet.getRow(startRow + 5);
       row6.height = 90;
@@ -151,7 +148,6 @@ export const downloadChecklistExcel = async (
       const nameValCell = worksheet.getCell(`D${startRow + 5}`);
       nameValCell.value = data.productName;
       nameValCell.style = leftAlignDataValueStyle;
-      for (let c = 4; c <= 8; c++) worksheet.getCell(startRow + 5, c).border = thinBorder;
 
       const row7 = worksheet.getRow(startRow + 6);
       row7.height = 90;
@@ -169,7 +165,6 @@ export const downloadChecklistExcel = async (
       worksheet.getCell(`F${startRow + 6}`).style = dataValueStyle;
       worksheet.getCell(`G${startRow + 6}`).value = "사용시간";
       worksheet.getCell(`G${startRow + 6}`).style = headerLabelStyle;
-      worksheet.getCell(`H${startRow + 6}`).value = ""; 
       worksheet.getCell(`H${startRow + 6}`).style = dataValueStyle;
 
       const row8 = worksheet.getRow(startRow + 7);
@@ -188,34 +183,21 @@ export const downloadChecklistExcel = async (
       const serialValCell = worksheet.getCell(`F${startRow + 7}`);
       serialValCell.value = data.serialNumber;
       serialValCell.style = leftAlignDataValueStyle;
-      for (let c = 6; c <= 8; c++) worksheet.getCell(startRow + 7, c).border = thinBorder;
 
       const row9 = worksheet.getRow(startRow + 8);
       row9.height = 90;
       worksheet.getCell(`A${startRow + 8}`).value = "물류:";
-      worksheet.getCell(`A${startRow + 8}`).style = { alignment: { vertical: "bottom", horizontal: "left" } };
       worksheet.getCell(`B${startRow + 8}`).value = data.category === "물류" ? "O" : "";
-      worksheet.getCell(`B${startRow + 8}`).style = { font: { bold: true, size: 18, name: "Malgun Gothic" }, alignment: { vertical: "bottom", horizontal: "left" } };
-
       worksheet.getCell(`C${startRow + 8}`).value = "건설:";
-      worksheet.getCell(`C${startRow + 8}`).style = { alignment: { vertical: "bottom", horizontal: "left" } };
       worksheet.getCell(`D${startRow + 8}`).value = data.category === "건설" ? "O" : "";
-      worksheet.getCell(`D${startRow + 8}`).style = { font: { bold: true, size: 18, name: "Malgun Gothic" }, alignment: { vertical: "bottom", horizontal: "left" } };
-
       worksheet.mergeCells(`E${startRow + 8}:H${startRow + 8}`);
-      const legendCell = worksheet.getCell(`E${startRow + 8}`);
-      legendCell.value = "양호: V  보통: △  불량: x  교체: O  해당없음: N";
-      legendCell.style = { font: { size: 14, bold: true, name: "Malgun Gothic" }, alignment: { vertical: "bottom", horizontal: "right" } };
-
-      worksheet.getRow(startRow + 9).height = 40;
+      worksheet.getCell(`E${startRow + 8}`).value = "양호: V  보통: △  불량: x  교체: O  해당없음: N";
 
       try {
         const qrDataUrl = await QRCode.toDataURL(data.mgmtNumber, { margin: 1, width: 250 });
         const qrImageId = workbook.addImage({ base64: qrDataUrl, extension: "png" });
         worksheet.addImage(qrImageId, { tl: { col: 7.9, row: startRow + 0.8 }, ext: { width: 110, height: 110 } });
-      } catch (err) {
-        console.error("QR Code Error:", err);
-      }
+      } catch (err) {}
     }
 
     worksheet.pageSetup = {
@@ -224,7 +206,6 @@ export const downloadChecklistExcel = async (
       fitToPage: true,
       fitToWidth: 1,
       fitToHeight: 1,
-      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0, footer: 0 },
     };
   }
 
