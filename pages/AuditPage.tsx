@@ -1,15 +1,15 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
-import { 
-  ScanQrCode, 
-  CheckCircle, 
-  History, 
-  Package, 
-  XCircle, 
-  CameraOff, 
-  CloudUpload, 
-  X, 
+import {
+  ScanQrCode,
+  CheckCircle,
+  History,
+  Package,
+  XCircle,
+  CameraOff,
+  CloudUpload,
+  X,
   Loader2,
   Check,
   ExternalLink,
@@ -35,14 +35,14 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
   const [isCoolingDown, setIsCoolingDown] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
-  
+
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const scannerId = "qr-reader-container";
   const SHARED_SHEET_URL = "https://docs.google.com/spreadsheets/d/1NXT2EBow1zWxmPsb7frN90e95qRH1mkY9DQUgCrsn2I/edit?usp=sharing";
 
   useEffect(() => {
     const audited = masterData.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
-    setAuditHistory([...audited].reverse()); 
+    setAuditHistory([...audited].reverse());
   }, [masterData]);
 
   const startScanner = async () => {
@@ -62,8 +62,8 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     const html5QrCode = new Html5Qrcode(scannerId);
     html5QrCodeRef.current = html5QrCode;
 
-    const config = { 
-      fps: 15, 
+    const config = {
+      fps: 15,
       qrbox: { width: 250, height: 250 },
       aspectRatio: 1.0,
       formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
@@ -74,7 +74,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
         { facingMode: "environment" },
         config,
         (decodedText) => handleScanSuccess(decodedText),
-        () => {}
+        () => { }
       );
       setCameraStatus('ready');
     } catch (err: any) {
@@ -105,14 +105,14 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     const trimmedText = decodedText.trim();
     setScannedResult(trimmedText);
 
-    const match = masterData.find(row => 
+    const match = masterData.find(row =>
       String(row[MASTER_COLUMNS.MGMT_NO] || "").trim() === trimmedText ||
       String(row[MASTER_COLUMNS.ASSET_NO] || "").trim() === trimmedText
     );
 
     setFoundRow(match || null);
     setShowModal(true);
-    
+
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       html5QrCodeRef.current.pause();
     }
@@ -121,7 +121,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
   const loadMockData = () => {
     const today = new Date();
     const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
-    
+
     const mock1: MasterDataRow = {
       [MASTER_COLUMNS.MGMT_NO]: "TY15C384",
       [MASTER_COLUMNS.PROD_NO]: "851BXC341",
@@ -168,7 +168,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
 
     const today = new Date();
     const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
-    
+
     setMasterData(prev => prev.map(row => {
       if (row[MASTER_COLUMNS.MGMT_NO] === foundRow[MASTER_COLUMNS.MGMT_NO]) {
         return {
@@ -188,11 +188,11 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     setScannedResult(null);
     setFoundRow(null);
     setIsCoolingDown(true);
-    
+
     if (html5QrCodeRef.current) {
       html5QrCodeRef.current.resume();
     }
-    
+
     setTimeout(() => setIsCoolingDown(false), 1500);
   };
 
@@ -207,7 +207,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
       const result = await syncAuditDataToCloud(masterData);
       const now = new Date();
       setLastSyncTime(now.toLocaleTimeString());
-      
+
       setMasterData(prev => prev.map(row => ({
         ...row,
         [AUDIT_COLUMNS.STATUS]: row[AUDIT_COLUMNS.STATUS] === 'O' ? '' : row[AUDIT_COLUMNS.STATUS]
@@ -232,9 +232,9 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
           <div>
             <h2 className="text-2xl font-black text-gray-900 leading-tight">현장 자산 실사</h2>
             <div className="flex items-center gap-3 mt-1">
-              <a 
-                href={SHARED_SHEET_URL} 
-                target="_blank" 
+              <a
+                href={SHARED_SHEET_URL}
+                target="_blank"
                 rel="noreferrer"
                 className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded transition-colors"
               >
@@ -248,33 +248,8 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
             </div>
           </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          {/*<button 
-            onClick={loadMockData}
-            className="flex items-center gap-2 px-4 py-4 rounded-2xl font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all border border-amber-200 text-sm"
-          >
-            <TestTube className="w-4 h-4" /> 목업 로드
-          </button>
-*/}
-          <button 
-            type="button"
-            onClick={handleTransfer}
-            disabled={auditHistory.length === 0 || isSyncing}
-            className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-black transition-all shadow-xl active:scale-95 ${
-              auditHistory.length > 0 && !isSyncing
-                ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200" 
-                : "bg-gray-100 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            {isSyncing ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <CloudUpload className="w-5 h-5" />
-            )}
-            실사 결과 일괄 전송
-          </button>
-        </div>
+
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -282,19 +257,19 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
           <div className="bg-white rounded-[2rem] shadow-2xl border border-gray-100 overflow-hidden ring-1 ring-gray-100">
             <div className="p-5 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
               <span className="font-bold text-gray-700 flex items-center gap-2 text-sm uppercase tracking-wider">
-                <div className={`w-2 h-2 rounded-full ${cameraStatus === 'ready' ? 'bg-green-500' : cameraStatus === 'loading' ? 'bg-orange-500 animate-pulse' : 'bg-red-500'}`}></div> 
+                <div className={`w-2 h-2 rounded-full ${cameraStatus === 'ready' ? 'bg-green-500' : cameraStatus === 'loading' ? 'bg-orange-500 animate-pulse' : 'bg-red-500'}`}></div>
                 Smart Scan
               </span>
               <div className="flex items-center gap-2">
-                <button 
-                  onClick={startScanner} 
+                <button
+                  onClick={startScanner}
                   className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors text-gray-500 flex items-center gap-1 text-xs font-bold"
                 >
                   <RefreshCcw className={`w-4 h-4 ${cameraStatus === 'loading' ? 'animate-spin' : ''}`} /> 리셋
                 </button>
               </div>
             </div>
-            
+
             <div className="p-4 bg-black min-h-[400px] flex items-center justify-center relative">
               <div id={scannerId} className="w-full h-full overflow-hidden rounded-2xl"></div>
 
@@ -310,7 +285,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
                   <CameraOff className="w-16 h-16 text-red-500 mb-6 opacity-50" />
                   <p className="font-bold text-lg mb-2">카메라 오류</p>
                   <p className="text-xs text-gray-400 mb-6 leading-relaxed">{errorMessage}</p>
-                  <button 
+                  <button
                     onClick={startScanner}
                     className="bg-white text-black px-6 py-2.5 rounded-xl font-black text-sm hover:bg-gray-200 transition-all flex items-center gap-2"
                   >
@@ -318,7 +293,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
                   </button>
                 </div>
               )}
-              
+
               {cameraStatus === 'ready' && !errorMessage && (
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[11px] font-bold text-white/80 bg-black/60 backdrop-blur-md px-5 py-2.5 rounded-full pointer-events-none z-10 border border-white/10 shadow-2xl">
                   {isCoolingDown ? "잠시 대기 중..." : "QR 코드를 사각형 안에 비춰주세요"}
@@ -328,17 +303,17 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-[2rem] shadow-2xl border border-gray-100 h-full min-h-[500px] flex flex-col">
+        <div className="bg-white p-6 rounded-[2rem] shadow-2xl border border-gray-100 h-full min-h-[500px] flex flex-col justify-between">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
               <History className="w-5 h-5 text-purple-600" /> 전송 대기 중인 실사
             </h3>
             <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-[11px] font-black">
-              {auditHistory.length} ASSETS
+              {auditHistory.length} 건
             </span>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar mb-6 max-h-[300px]">
             {auditHistory.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400 py-20 opacity-40">
                 <Package className="w-16 h-16 mb-4" />
@@ -364,7 +339,32 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
               ))
             )}
           </div>
+          <div className="flex items-center gap-2 justify-center">
+            <button 
+            onClick={loadMockData}
+            className="flex items-center gap-2 px-4 py-4 rounded-2xl font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all border border-amber-200 text-sm"
+          >
+            <TestTube className="w-4 h-4" /> 목업 로드
+          </button> 
+            <button
+              type="button"
+              onClick={handleTransfer}
+              disabled={auditHistory.length === 0 || isSyncing}
+              className={`flex flex-1 justify-center items-center gap-2 px-8 py-4 rounded-2xl font-black transition-all shadow-xl active:scale-95 sm:flex-auto ${auditHistory.length > 0 && !isSyncing
+                  ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                }`}
+            >
+              {isSyncing ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <CloudUpload className="w-5 h-5" />
+              )}
+              실사 결과 일괄 전송
+            </button>
+          </div>
         </div>
+
       </div>
 
       {showModal && (
@@ -403,14 +403,14 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
                   </div>
 
                   <div className="flex gap-4 pt-4">
-                    <button 
+                    <button
                       type="button"
                       onClick={closeModal}
                       className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-black py-5 rounded-3xl transition-all"
                     >
                       취소
                     </button>
-                    <button 
+                    <button
                       type="button"
                       onClick={confirmAudit}
                       className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white font-black py-5 rounded-3xl shadow-2xl shadow-purple-200 flex items-center justify-center gap-3 transition-all active:scale-95"
@@ -427,8 +427,8 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
                 </div>
                 <h4 className="text-3xl font-black text-gray-900 mb-3 tracking-tight">자산 매칭 실패</h4>
                 <p className="text-gray-500 mb-2">코드: <span className="font-mono font-bold text-red-600 text-lg">{scannedResult}</span></p>
-                <p className="text-sm text-gray-400 mb-12 leading-relaxed font-medium">현재 데이터베이스에 존재하지 않는<br/>관리번호입니다.</p>
-                <button 
+                <p className="text-sm text-gray-400 mb-12 leading-relaxed font-medium">현재 데이터베이스에 존재하지 않는<br />관리번호입니다.</p>
+                <button
                   type="button"
                   onClick={closeModal}
                   className="w-full bg-gray-900 text-white font-black py-6 rounded-3xl hover:bg-black transition-all shadow-2xl active:scale-95 text-xl"

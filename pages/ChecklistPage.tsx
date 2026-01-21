@@ -87,7 +87,6 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
     return `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
   };
 
-  // 서버에만 저장
   const handleSaveOnly = async () => {
     if (currentChecklists.length === 0) return;
     
@@ -104,7 +103,6 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
     }
   };
 
-  // 엑셀 다운로드 (전송 후 다운로드)
   const handleExcelExport = async () => {
     if (currentChecklists.length === 0) return;
     
@@ -127,7 +125,6 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
     }
   };
 
-  // PDF 다운로드 (전송 후 다운로드)
   const handlePdfExport = async () => {
     if (currentChecklists.length === 0) return;
     
@@ -196,36 +193,35 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
           disabled={isProcessing}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-xl transition-all flex items-center justify-center gap-3 text-lg disabled:bg-gray-400 active:scale-95"
         >
-          <Search className="w-6 h-6" /> 데이터 일괄 매칭
+          <Search className="w-6 h-6" /> 데이터 일괄 조회
         </button>
 
         {currentChecklists.length > 0 && (
           <div className="mt-12 space-y-8 no-print">
-            <div className="flex flex-col md:flex-row md:items-center justify-between sticky top-20 z-30 bg-white/80 backdrop-blur-md px-6 py-5 rounded-3xl border border-gray-200 shadow-xl gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between sticky top-20 z-30 bg-white/80 backdrop-blur-md px-6 py-5 rounded-3xl border border-gray-200 shadow-xl gap-6">
               <div className="flex flex-col">
-                <h4 className="font-black text-gray-900 text-lg">매칭 결과: {currentChecklists.length}건</h4>
-                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">Cloud Synchronization Enabled</p>
+                <h4 className="font-black text-gray-900 text-lg">조회 결과: {currentChecklists.length}건</h4> 
               </div>
               
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <button 
                   onClick={handleSaveOnly} 
                   disabled={isProcessing}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-black flex items-center gap-2 shadow-lg shadow-indigo-100 disabled:bg-gray-400 transition-all active:scale-95"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 disabled:bg-gray-400 transition-all active:scale-95 sm:min-w-[120px]"
                 >
                   <CloudUpload className="w-4 h-4" /> 저장
                 </button>
                 <button 
                   onClick={handleExcelExport} 
                   disabled={isProcessing}
-                  className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl text-sm font-black flex items-center gap-2 shadow-lg shadow-green-100 disabled:bg-gray-400 transition-all active:scale-95"
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-green-100 disabled:bg-gray-400 transition-all active:scale-95 sm:min-w-[140px]"
                 >
                   <Download className="w-4 h-4" /> 엑셀 다운로드
                 </button>
                 <button 
                   onClick={handlePdfExport} 
                   disabled={isProcessing} 
-                  className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl text-sm font-black flex items-center gap-2 shadow-lg shadow-red-100 disabled:bg-gray-400 transition-all active:scale-95"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-red-100 disabled:bg-gray-400 transition-all active:scale-95 sm:min-w-[140px]"
                 >
                   <FileText className="w-4 h-4" /> PDF 다운로드
                 </button>

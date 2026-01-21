@@ -51,8 +51,8 @@ const HomePage: React.FC<HomePageProps> = ({
       {isProcessing && <LoadingOverlay message="마스터 데이터 업로드 및 분석 중..." />}
       
       <div className="text-center mb-12">
-        <h2 className="text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">AJ솔루션테크 자산관리 통합 플랫폼</h2>
-        <p className="text-lg text-gray-600 font-medium">효율적인 자산 관리를 위해 마스터 데이터를 업로드해 주세요.</p>
+        <h2 className="text-xl sm:text-2xl font-extrabold text-red-500 mb-2 tracking-tight">AJ솔루션테크</h2>
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">장비 점검, 실사, QR생성 서비스</h2> 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
