@@ -7,10 +7,12 @@ import {
   AlertCircle, 
   FileText, 
   Loader2,
-  ListFilter
+  ListFilter,
+  CloudUpload,
+  Check
 } from "lucide-react";
 import { MasterDataRow, ChecklistData, MASTER_COLUMNS } from "../types";
-import { downloadChecklistExcel } from "../services/excelService";
+import { downloadChecklistExcel, syncChecklistToCloud } from "../services/excelService";
 import { downloadChecklistPDF } from "../services/pdfService";
 import ChecklistPreview from "../components/ChecklistPreview";
 
@@ -23,6 +25,8 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
   const [engineerInput, setEngineerInput] = useState("");
   const [currentChecklists, setCurrentChecklists] = useState<ChecklistData[]>([]);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncDone, setSyncDone] = useState(false);
   const [warnText, setWarnText] = useState<string | null>("");
 
   const removeLeadingQuote = (str: string): string => {
@@ -76,7 +80,26 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
     });
 
     setCurrentChecklists(foundChecklists);
+    setSyncDone(false); // 새로운 검색 시 전송 상태 초기화
     setWarnText(missingMgmts.length > 0 ? `다음 번호를 찾을 수 없습니다: ${missingMgmts.join(", ")}` : "");
+  };
+
+  const handleCloudSync = async () => {
+    if (currentChecklists.length === 0) return;
+    
+    setIsSyncing(true);
+    try {
+      const result = await syncChecklistToCloud(currentChecklists);
+      if (result.success) {
+        setSyncDone(true);
+        alert(`${result.count}건의 데이터가 구글 시트로 전송되었습니다.`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("클라우드 전송 중 오류가 발생했습니다.");
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const getDate = () => {
@@ -160,14 +183,39 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
 
         {currentChecklists.length > 0 && (
           <div className="mt-12 space-y-8 no-print">
-            <div className="flex items-center justify-between sticky top-20 z-30 bg-gray-50/90 backdrop-blur px-4 py-3 rounded-2xl border border-gray-200 shadow-sm">
-              <h4 className="font-bold text-gray-700">매칭 결과: {currentChecklists.length}건</h4>
-              <div className="flex gap-2">
+            <div className="flex flex-col md:flex-row md:items-center justify-between sticky top-20 z-30 bg-gray-50/90 backdrop-blur px-4 py-4 rounded-2xl border border-gray-200 shadow-sm gap-4">
+              <div className="flex flex-col">
+                <h4 className="font-black text-gray-900">매칭 결과: {currentChecklists.length}건</h4>
+                <p className="text-[10px] text-gray-500 font-bold">전송 시 자산실사일/여부는 빈 값으로 처리됩니다.</p>
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={handleCloudSync} 
+                  disabled={isSyncing || syncDone}
+                  className={`px-4 py-2 rounded-lg text-sm font-black flex items-center gap-2 shadow-sm transition-all ${
+                    syncDone 
+                    ? "bg-green-100 text-green-700 cursor-default" 
+                    : "bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-gray-400"
+                  }`}
+                >
+                  {isSyncing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : syncDone ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <CloudUpload className="w-4 h-4" />
+                  )}
+                  {syncDone ? "시트 전송 완료" : "시트로 전송 (초기 등록)"}
+                </button>
+
+                <div className="h-8 w-px bg-gray-200 mx-1 hidden md:block"></div>
+
                 <button onClick={handleExcelExport} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm">
-                  <Download className="w-4 h-4" /> 엑셀
+                  <Download className="w-4 h-4" /> 엑셀 다운로드
                 </button>
                 <button onClick={handlePdfExport} disabled={isExportingPdf} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm disabled:bg-gray-400">
-                  {isExportingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF
+                  {isExportingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF 다운로드
                 </button>
               </div>
             </div>

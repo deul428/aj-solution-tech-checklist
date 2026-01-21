@@ -7,7 +7,7 @@ import { MasterDataRow, ChecklistData, AUDIT_COLUMNS, MASTER_COLUMNS } from "../
 /**
  * [주의] 반드시 Google Apps Script 배포 후 받은 새로운 '웹 앱 URL'을 여기에 넣으세요.
  */
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxjwzzS3ICXplXppA1Yjw5WP-WW0dOGzBaaq2NVkTcnXStZHoFJzUDRfrCtQRqQimLH/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwX3jrIWMNW9Ul0-jE8cIUU4ukuO1WmU9M5fQpAR1I9GYJzjqqpkEQBtvx_siXiBvlM/exec";
 
 /**
  * Parses an uploaded Excel file into JSON data.
@@ -33,60 +33,173 @@ export const parseMasterExcel = (file: File): Promise<MasterDataRow[]> => {
 };
 
 /**
- * Sends audited data to Google Sheets via Apps Script.
- * Appends new rows with all specified asset details.
+ * Sends initial checklist data to Google Sheets (Checklist stage).
  */
-export const syncAuditDataToCloud = async (data: MasterDataRow[]): Promise<{ success: boolean; count: number }> => {
-  // 실사 여부가 'O'인 데이터만 필터링
-  const auditedItems = data.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
-  
-  if (auditedItems.length === 0) {
-    console.warn("No items marked as audited ('O') to sync.");
-    return { success: false, count: 0 };
-  }
+export const syncChecklistToCloud = async (data: ChecklistData[]): Promise<{ success: boolean; count: number }> => {
+  if (data.length === 0) return { success: false, count: 0 };
 
-  // 사용자 요청에 따른 엑셀 시트 헤더명과 1:1 매칭 변환
-  const payload = auditedItems.map(row => ({
-    "자산번호": String(row[MASTER_COLUMNS.ASSET_NO] || "").trim(),
-    "관리번호": String(row[MASTER_COLUMNS.MGMT_NO] || "").trim(),
-    "상품코드": String(row[MASTER_COLUMNS.PROD_NO] || "").trim(),
-    "상품명": String(row[MASTER_COLUMNS.PROD_NAME] || "").trim(),
-    "제조사": String(row[MASTER_COLUMNS.MANUFACTURER] || "").trim(),
-    "모델": String(row[MASTER_COLUMNS.MODEL_NAME] || "").trim(),
-    "년식": String(row[MASTER_COLUMNS.PROD_YEAR] || "").trim(),
-    "차량번호": String(row[MASTER_COLUMNS.VEHICLE_NO] || "").trim(),
-    "차대번호": String(row[MASTER_COLUMNS.SERIAL_NO] || "").trim(),
-    "자산실사일": row[AUDIT_COLUMNS.DATE] || new Date().toLocaleDateString(),
-    "자산실사 여부": "O"
+  const payload = await Promise.all(data.map(async (item) => {
+    let qrBase64 = "";
+    try {
+      qrBase64 = await QRCode.toDataURL(item.mgmtNumber, { margin: 1, width: 200 });
+    } catch (err) {
+      console.error("QR Generation failed for", item.mgmtNumber, err);
+    }
+
+    return {
+      "QR": qrBase64,
+      "관리번호": String(item.mgmtNumber || "").trim(),
+      "자산번호": String(item.assetNumber || "").trim(),
+      "상품코드": String(item.productCode || "").trim(),
+      "상품명": String(item.productName || "").trim(),
+      "제조사": String(item.manufacturer || "").trim(),
+      "모델": String(item.model || "").trim(),
+      "년식": String(item.year || "").trim(),
+      "차량번호": String(item.vehicleNumber || "").trim(),
+      "차대번호": String(item.serialNumber || "").trim(),
+      "자산실사일": "", 
+      "자산실사 여부": ""
+    };
   }));
 
-  console.log("Attempting to sync payload:", payload);
-
   try {
-    // Google Apps Script는 Redirect(302)를 사용하므로 
-    // 브라우저에서 응답 본문을 읽으려면 no-cors를 써야 하는 경우가 많습니다.
-    // 하지만 데이터 전송 자체는 이뤄집니다.
     await fetch(GAS_URL, {
       method: "POST",
       mode: "no-cors", 
-      headers: {
-        "Content-Type": "text/plain", 
-      },
+      headers: { "Content-Type": "text/plain" },
       body: JSON.stringify(payload),
     });
-
-    return {
-      success: true,
-      count: payload.length
-    };
+    return { success: true, count: payload.length };
   } catch (error) {
-    console.error("Sync fetch error:", error);
+    console.error("Checklist Sync error:", error);
     throw error;
   }
 };
 
 /**
- * Fallback Excel export
+ * Sends audited data to Google Sheets via Apps Script.
+ */
+export const syncAuditDataToCloud = async (data: MasterDataRow[]): Promise<{ success: boolean; count: number }> => {
+  const auditedItems = data.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
+  
+  if (auditedItems.length === 0) return { success: false, count: 0 };
+
+  const payload = await Promise.all(auditedItems.map(async (row) => {
+    const mgmtNo = String(row[MASTER_COLUMNS.MGMT_NO] || "").trim();
+    let qrBase64 = "";
+    try {
+      qrBase64 = await QRCode.toDataURL(mgmtNo, { margin: 1, width: 200 });
+    } catch (err) {}
+
+    return {
+      "QR": qrBase64,
+      "관리번호": mgmtNo,
+      "자산번호": String(row[MASTER_COLUMNS.ASSET_NO] || "").trim(),
+      "상품코드": String(row[MASTER_COLUMNS.PROD_NO] || "").trim(),
+      "상품명": String(row[MASTER_COLUMNS.PROD_NAME] || "").trim(),
+      "제조사": String(row[MASTER_COLUMNS.MANUFACTURER] || "").trim(),
+      "모델": String(row[MASTER_COLUMNS.MODEL_NAME] || "").trim(),
+      "년식": String(row[MASTER_COLUMNS.PROD_YEAR] || "").trim(),
+      "차량번호": String(row[MASTER_COLUMNS.VEHICLE_NO] || "").trim(),
+      "차대번호": String(row[MASTER_COLUMNS.SERIAL_NO] || "").trim(),
+      "자산실사일": row[AUDIT_COLUMNS.DATE] || new Date().toLocaleDateString(),
+      "자산실사 여부": "O"
+    };
+  }));
+
+  try {
+    await fetch(GAS_URL, {
+      method: "POST",
+      mode: "no-cors", 
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(payload),
+    });
+    return { success: true, count: payload.length };
+  } catch (error) {
+    console.error("Audit Sync error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Exports master data to Excel with actual QR images embedded in cells.
+ */
+export const exportMasterWithImages = async (data: MasterDataRow[], fileName: string = "master_with_qr.xlsx") => {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Asset List");
+
+  // Define columns
+  sheet.columns = [
+    { header: "QR", key: "qr", width: 15 },
+    { header: "관리번호", key: "mgmt", width: 20 },
+    { header: "자산번호", key: "asset", width: 20 },
+    { header: "상품코드", key: "prodCode", width: 20 },
+    { header: "상품명", key: "prodName", width: 40 },
+    { header: "제조사", key: "brand", width: 20 },
+    { header: "모델", key: "model", width: 20 },
+    { header: "년식", key: "year", width: 10 },
+    { header: "자산실사일", key: "auditDate", width: 15 },
+    { header: "실사여부", key: "auditStatus", width: 10 },
+  ];
+
+  // Header Style
+  sheet.getRow(1).font = { bold: true };
+  sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+  for (let i = 0; i < data.length; i++) {
+    const rowData = data[i];
+    const mgmtNo = String(rowData[MASTER_COLUMNS.MGMT_NO] || "").trim();
+    const currentRow = i + 2;
+
+    // Set row height for QR image
+    sheet.getRow(currentRow).height = 80;
+
+    // Add Text Data
+    sheet.addRow({
+      mgmt: mgmtNo,
+      asset: rowData[MASTER_COLUMNS.ASSET_NO],
+      prodCode: rowData[MASTER_COLUMNS.PROD_NO],
+      prodName: rowData[MASTER_COLUMNS.PROD_NAME],
+      brand: rowData[MASTER_COLUMNS.MANUFACTURER],
+      model: rowData[MASTER_COLUMNS.MODEL_NAME],
+      year: rowData[MASTER_COLUMNS.PROD_YEAR],
+      auditDate: rowData[AUDIT_COLUMNS.DATE],
+      auditStatus: rowData[AUDIT_COLUMNS.STATUS],
+    });
+
+    // Generate and Embed QR Image
+    if (mgmtNo) {
+      try {
+        const qrBase64 = await QRCode.toDataURL(mgmtNo, { margin: 1, width: 200 });
+        const imageId = workbook.addImage({
+          base64: qrBase64,
+          extension: 'png',
+        });
+
+        // Insert image at column A (index 0), row i+2
+        sheet.addImage(imageId, {
+          tl: { col: 0.1, row: i + 1.1 }, // Top-left anchor
+          ext: { width: 100, height: 100 } // Size in pixels
+        });
+      } catch (err) {
+        console.error("QR embedding failed", err);
+      }
+    }
+    
+    sheet.getRow(currentRow).alignment = { vertical: 'middle', horizontal: 'center' };
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+};
+
+/**
+ * Legacy Excel export (Text only)
  */
 export const exportMasterWithAudit = (data: MasterDataRow[], fileName: string = "master_audit_result.xlsx") => {
   const worksheet = XLSX.utils.json_to_sheet(data);

@@ -49,8 +49,8 @@ const HomePage: React.FC<HomePageProps> = ({
   return (
     <div className="max-w-4xl mx-auto py-12 px-6">
       <div className="text-center mb-12">
-        <h2 className="text-4xl font-extrabold text-gray-900 mb-4">자산관리 통합 플랫폼</h2>
-        <p className="text-lg text-gray-600">마스터 데이터를 업로드하여 업무 효율을 높이세요.</p>
+        <h2 className="text-4xl font-extrabold text-gray-900 mb-4">AJ솔루션테크 자산관리 통합 플랫폼</h2>
+        <p className="text-lg text-gray-600">마스터 데이터를 업로드해 주세요.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

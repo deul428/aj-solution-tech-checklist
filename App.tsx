@@ -48,20 +48,7 @@ const App: React.FC = () => {
       {/* Navigation Bar */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm no-print">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <div 
-                className="flex-shrink-0 flex items-center gap-2 cursor-pointer" 
-                onClick={() => setCurrentView("home")}
-              >
-                <div className="bg-blue-600 p-1.5 rounded-lg">
-                  <ClipboardCheck className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-xl font-bold text-gray-900 tracking-tight hidden sm:block">
-                  AssetHub <span className="text-blue-600">Pro</span>
-                </span>
-              </div>
-            </div>
+          <div className="flex justify-center h-16">
 
             {/* Desktop Menu */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-4 items-center">
@@ -131,7 +118,7 @@ const App: React.FC = () => {
 
       <footer className="bg-white border-t border-gray-200 py-6 no-print">
         <div className="max-w-7xl mx-auto px-4 text-center text-gray-400 text-sm">
-          &copy; 2025 솔루션테크 자산관리 시스템. All rights reserved.
+          &copy; 2026 ㈜AJ Networks. All rights reserved.
         </div>
       </footer>
     </div>

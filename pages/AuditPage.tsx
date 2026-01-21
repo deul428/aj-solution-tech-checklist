@@ -15,10 +15,12 @@ import {
   Check,
   ExternalLink,
   RefreshCcw,
-  Camera
+  Camera,
+  TestTube,
+  Download
 } from "lucide-react";
 import { MasterDataRow, MASTER_COLUMNS, AUDIT_COLUMNS } from "../types";
-import { syncAuditDataToCloud } from "../services/excelService";
+import { syncAuditDataToCloud, exportMasterWithImages } from "../services/excelService";
 
 interface AuditPageProps {
   masterData: MasterDataRow[];
@@ -34,6 +36,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCoolingDown, setIsCoolingDown] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
@@ -45,12 +48,10 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     setAuditHistory([...audited].reverse()); 
   }, [masterData]);
 
-  // 카메라 시작 함수
   const startScanner = async () => {
     setCameraStatus('loading');
     setErrorMessage(null);
 
-    // 1. 기존 인스턴스 정리
     if (html5QrCodeRef.current) {
       try {
         if (html5QrCodeRef.current.isScanning) {
@@ -61,7 +62,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
       }
     }
 
-    // 2. 새 인스턴스 생성
     const html5QrCode = new Html5Qrcode(scannerId);
     html5QrCodeRef.current = html5QrCode;
 
@@ -73,12 +73,11 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     };
 
     try {
-      // 모바일 환경(iOS/Android)에서 후면 카메라 우선 사용
       await html5QrCode.start(
         { facingMode: "environment" },
         config,
         (decodedText) => handleScanSuccess(decodedText),
-        () => {} // 에러 콜백은 노이즈가 많으므로 비워둠
+        () => {}
       );
       setCameraStatus('ready');
     } catch (err: any) {
@@ -89,7 +88,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
       } else if (err.includes("NotFoundError")) {
         setErrorMessage("카메라 장치를 찾을 수 없습니다.");
       } else {
-        setErrorMessage("카메라를 시작할 수 없습니다. 페이지를 새로고침하거나 다른 브라우저를 시도해 보세요.");
+        setErrorMessage("카메라를 시작할 수 없습니다.");
       }
     }
   };
@@ -117,10 +116,54 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     setFoundRow(match || null);
     setShowModal(true);
     
-    // 스캔 성공 시 잠시 멈춤
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       html5QrCodeRef.current.pause();
     }
+  };
+
+  const loadMockData = () => {
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+    
+    const mock1: MasterDataRow = {
+      [MASTER_COLUMNS.MGMT_NO]: "TY15C384",
+      [MASTER_COLUMNS.PROD_NO]: "851BXC341",
+      [MASTER_COLUMNS.PROD_NAME]: "전동 좌식 1.5톤 2단 3000",
+      [MASTER_COLUMNS.ASSET_NO]: "ASSET-001",
+      [MASTER_COLUMNS.MANUFACTURER]: "솔루션테크",
+      [MASTER_COLUMNS.MODEL_NAME]: "ST-1500",
+      [MASTER_COLUMNS.PROD_YEAR]: "2023",
+      [MASTER_COLUMNS.VEHICLE_NO]: "12가3456",
+      [MASTER_COLUMNS.SERIAL_NO]: "SN-TY15-001",
+      [AUDIT_COLUMNS.DATE]: dateStr,
+      [AUDIT_COLUMNS.STATUS]: 'O'
+    };
+
+    const mock2: MasterDataRow = {
+      [MASTER_COLUMNS.MGMT_NO]: "TY15C385",
+      [MASTER_COLUMNS.PROD_NO]: "851BXC312",
+      [MASTER_COLUMNS.PROD_NAME]: "전동 좌식 2.5톤 3단 4700",
+      [MASTER_COLUMNS.ASSET_NO]: "ASSET-002",
+      [MASTER_COLUMNS.MANUFACTURER]: "솔루션테크",
+      [MASTER_COLUMNS.MODEL_NAME]: "ST-2500",
+      [MASTER_COLUMNS.PROD_YEAR]: "2024",
+      [MASTER_COLUMNS.VEHICLE_NO]: "98나7654",
+      [MASTER_COLUMNS.SERIAL_NO]: "SN-TY25-002",
+      [AUDIT_COLUMNS.DATE]: dateStr,
+      [AUDIT_COLUMNS.STATUS]: 'O'
+    };
+
+    setMasterData(prev => {
+      let newData = [...prev];
+      [mock1, mock2].forEach(mock => {
+        const idx = newData.findIndex(r => r[MASTER_COLUMNS.MGMT_NO] === mock[MASTER_COLUMNS.MGMT_NO]);
+        if (idx > -1) newData[idx] = { ...newData[idx], ...mock };
+        else newData.push(mock);
+      });
+      return newData;
+    });
+
+    alert("테스트용 목업 데이터 2건이 실사 완료 상태로 추가되었습니다.");
   };
 
   const confirmAudit = () => {
@@ -165,15 +208,33 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     setIsSyncing(true);
     try {
       const result = await syncAuditDataToCloud(masterData);
-      if (result.success) {
-        const now = new Date();
-        setLastSyncTime(now.toLocaleTimeString());
-        alert(`${result.count}건의 실사 결과가 공유 시트로 전송되었습니다.`);
-      }
+      const now = new Date();
+      setLastSyncTime(now.toLocaleTimeString());
+      
+      setMasterData(prev => prev.map(row => ({
+        ...row,
+        [AUDIT_COLUMNS.STATUS]: row[AUDIT_COLUMNS.STATUS] === 'O' ? '' : row[AUDIT_COLUMNS.STATUS]
+      })));
+
+      alert(`${result.count}건의 실사 결과가 전송되었습니다. 전송 목록이 초기화되었습니다.`);
     } catch (error) {
-      alert("데이터 전송 중 오류가 발생했습니다. Apps Script 배포 상태를 확인하세요.");
+      console.error("Transfer error:", error);
+      alert("데이터 전송 중 오류가 발생했습니다.");
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleExcelExportWithQR = async () => {
+    if (masterData.length === 0) return;
+    setIsExporting(true);
+    try {
+      await exportMasterWithImages(masterData, `자산실사_리스트_QR포함_${new Date().getTime()}.xlsx`);
+    } catch (err) {
+      console.error(err);
+      alert("엑셀 생성 중 오류가 발생했습니다.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -204,27 +265,43 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
           </div>
         </div>
         
-        <button 
-          type="button"
-          onClick={handleTransfer}
-          disabled={auditHistory.length === 0 || isSyncing}
-          className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-black transition-all shadow-xl active:scale-95 ${
-            auditHistory.length > 0 && !isSyncing
-              ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200" 
-              : "bg-gray-100 text-gray-400 cursor-not-allowed"
-          }`}
-        >
-          {isSyncing ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <CloudUpload className="w-5 h-5" />
-          )}
-          실사 결과 일괄 전송
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleExcelExportWithQR}
+            disabled={isExporting}
+            className="flex items-center gap-2 px-4 py-4 rounded-2xl font-bold bg-green-50 text-green-700 hover:bg-green-100 transition-all border border-green-200 text-sm"
+          >
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} QR 포함 엑셀
+          </button>
+
+          <button 
+            onClick={loadMockData}
+            className="flex items-center gap-2 px-4 py-4 rounded-2xl font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all border border-amber-200 text-sm"
+          >
+            <TestTube className="w-4 h-4" /> 목업 로드
+          </button>
+
+          <button 
+            type="button"
+            onClick={handleTransfer}
+            disabled={auditHistory.length === 0 || isSyncing}
+            className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-black transition-all shadow-xl active:scale-95 ${
+              auditHistory.length > 0 && !isSyncing
+                ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200" 
+                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            {isSyncing ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <CloudUpload className="w-5 h-5" />
+            )}
+            실사 결과 일괄 전송
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        {/* Scanner Column */}
         <div className="space-y-6">
           <div className="bg-white rounded-[2rem] shadow-2xl border border-gray-100 overflow-hidden ring-1 ring-gray-100">
             <div className="p-5 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
@@ -243,7 +320,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
             </div>
             
             <div className="p-4 bg-black min-h-[400px] flex items-center justify-center relative">
-              {/* 스캐너 엘리먼트 - html5-qrcode가 비디오를 여기에 삽입함 */}
               <div id={scannerId} className="w-full h-full overflow-hidden rounded-2xl"></div>
 
               {cameraStatus === 'loading' && (
@@ -276,7 +352,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
           </div>
         </div>
 
-        {/* History Column */}
         <div className="bg-white p-6 rounded-[2rem] shadow-2xl border border-gray-100 h-full min-h-[500px] flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -316,7 +391,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
         </div>
       </div>
 
-      {/* Audit Confirmation Modal */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-400">
