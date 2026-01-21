@@ -100,6 +100,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
   }, []);
 
   const handleScanSuccess = (decodedText: string) => {
+    // 쿨다운 중이거나 모달이 이미 떠있으면 스캔 이벤트를 무시함
     if (showModal || isCoolingDown || isSyncing) return;
 
     const trimmedText = decodedText.trim();
@@ -113,54 +114,10 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     setFoundRow(match || null);
     setShowModal(true);
 
+    // 스캔 성공 즉시 카메라 일시정지
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       html5QrCodeRef.current.pause();
     }
-  };
-
-  const loadMockData = () => {
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
-
-    const mock1: MasterDataRow = {
-      [MASTER_COLUMNS.MGMT_NO]: "TY15C384",
-      [MASTER_COLUMNS.PROD_NO]: "851BXC341",
-      [MASTER_COLUMNS.PROD_NAME]: "전동 좌식 1.5톤 2단 3000",
-      [MASTER_COLUMNS.ASSET_NO]: "ASSET-001",
-      [MASTER_COLUMNS.MANUFACTURER]: "솔루션테크",
-      [MASTER_COLUMNS.MODEL_NAME]: "ST-1500",
-      [MASTER_COLUMNS.PROD_YEAR]: "2023",
-      [MASTER_COLUMNS.VEHICLE_NO]: "12가3456",
-      [MASTER_COLUMNS.SERIAL_NO]: "SN-TY15-001",
-      [AUDIT_COLUMNS.DATE]: dateStr,
-      [AUDIT_COLUMNS.STATUS]: 'O'
-    };
-
-    const mock2: MasterDataRow = {
-      [MASTER_COLUMNS.MGMT_NO]: "TY15C385",
-      [MASTER_COLUMNS.PROD_NO]: "851BXC312",
-      [MASTER_COLUMNS.PROD_NAME]: "전동 좌식 2.5톤 3단 4700",
-      [MASTER_COLUMNS.ASSET_NO]: "ASSET-002",
-      [MASTER_COLUMNS.MANUFACTURER]: "솔루션테크",
-      [MASTER_COLUMNS.MODEL_NAME]: "ST-2500",
-      [MASTER_COLUMNS.PROD_YEAR]: "2024",
-      [MASTER_COLUMNS.VEHICLE_NO]: "98나7654",
-      [MASTER_COLUMNS.SERIAL_NO]: "SN-TY25-002",
-      [AUDIT_COLUMNS.DATE]: dateStr,
-      [AUDIT_COLUMNS.STATUS]: 'O'
-    };
-
-    setMasterData(prev => {
-      let newData = [...prev];
-      [mock1, mock2].forEach(mock => {
-        const idx = newData.findIndex(r => r[MASTER_COLUMNS.MGMT_NO] === mock[MASTER_COLUMNS.MGMT_NO]);
-        if (idx > -1) newData[idx] = { ...newData[idx], ...mock };
-        else newData.push(mock);
-      });
-      return newData;
-    });
-
-    alert("테스트용 목업 데이터 2건이 실사 완료 상태로 추가되었습니다.");
   };
 
   const confirmAudit = () => {
@@ -187,13 +144,18 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     setShowModal(false);
     setScannedResult(null);
     setFoundRow(null);
+    
+    // 모달이 닫히면 쿨다운 모드 진입
     setIsCoolingDown(true);
 
-    if (html5QrCodeRef.current) {
-      html5QrCodeRef.current.resume();
-    }
-
-    setTimeout(() => setIsCoolingDown(false), 1500);
+    // 2초 뒤에만 카메라를 다시 재개(resume)하고 쿨다운을 해제함
+    // 이렇게 하면 사용자가 휴대폰을 움직일 시간을 벌 수 있고 중복 스캔을 방지함
+    setTimeout(() => {
+      setIsCoolingDown(false);
+      if (html5QrCodeRef.current) {
+        html5QrCodeRef.current.resume();
+      }
+    }, 2000);
   };
 
   const handleTransfer = async () => {
@@ -248,8 +210,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
             </div>
           </div>
         </div>
-
-
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -257,7 +217,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
           <div className="bg-white rounded-[2rem] shadow-2xl border border-gray-100 overflow-hidden ring-1 ring-gray-100">
             <div className="p-5 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
               <span className="font-bold text-gray-700 flex items-center gap-2 text-sm uppercase tracking-wider">
-                <div className={`w-2 h-2 rounded-full ${cameraStatus === 'ready' ? 'bg-green-500' : cameraStatus === 'loading' ? 'bg-orange-500 animate-pulse' : 'bg-red-500'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${cameraStatus === 'ready' ? (isCoolingDown ? 'bg-amber-500 animate-pulse' : 'bg-green-500') : cameraStatus === 'loading' ? 'bg-orange-500 animate-pulse' : 'bg-red-500'}`}></div>
                 Smart Scan
               </span>
               <div className="flex items-center gap-2">
@@ -295,8 +255,12 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
               )}
 
               {cameraStatus === 'ready' && !errorMessage && (
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[11px] font-bold text-white/80 bg-black/60 backdrop-blur-md px-5 py-2.5 rounded-full pointer-events-none z-10 border border-white/10 shadow-2xl">
-                  {isCoolingDown ? "잠시 대기 중..." : "QR 코드를 사각형 안에 비춰주세요"}
+                <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 text-[11px] font-bold px-5 py-2.5 rounded-full pointer-events-none z-10 border shadow-2xl transition-all duration-300 ${
+                  isCoolingDown 
+                  ? "bg-amber-500 text-white border-amber-400 animate-pulse" 
+                  : "text-white/80 bg-black/60 backdrop-blur-md border-white/10"
+                }`}>
+                  {isCoolingDown ? "다음 스캔 준비 중..." : "QR 코드를 사각형 안에 비춰주세요"}
                 </div>
               )}
             </div>
@@ -340,19 +304,13 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
             )}
           </div>
           <div className="flex items-center gap-2 justify-center">
-            <button 
-            onClick={loadMockData}
-            className="flex items-center gap-2 px-4 py-4 rounded-2xl font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all border border-amber-200 text-sm"
-          >
-            <TestTube className="w-4 h-4" /> 목업 로드
-          </button> 
             <button
               type="button"
               onClick={handleTransfer}
               disabled={auditHistory.length === 0 || isSyncing}
               className={`flex flex-1 justify-center items-center gap-2 px-8 py-4 rounded-2xl font-black transition-all shadow-xl active:scale-95 sm:flex-auto ${auditHistory.length > 0 && !isSyncing
-                  ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed"
                 }`}
             >
               {isSyncing ? (
@@ -364,7 +322,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
             </button>
           </div>
         </div>
-
       </div>
 
       {showModal && (
