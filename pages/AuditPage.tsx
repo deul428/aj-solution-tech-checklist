@@ -155,7 +155,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
       if (html5QrCodeRef.current) {
         html5QrCodeRef.current.resume();
       }
-    }, 2000);
+    }, 1500);
   };
 
   const handleTransfer = async () => {
