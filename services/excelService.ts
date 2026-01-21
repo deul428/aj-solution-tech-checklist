@@ -2,10 +2,13 @@
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import QRCode from "qrcode";
-import { MasterDataRow, ChecklistData, AUDIT_COLUMNS } from "../types";
+import { MasterDataRow, ChecklistData, AUDIT_COLUMNS, MASTER_COLUMNS } from "../types";
 
-// 사용자님의 실제 배포된 GAS URL입니다.
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzFNb-N9kQWuytVOMRNtKfB485xlsbGREMPIFZpO5oHPMgmUXmv63okoXI2PtJYXVdC/exec";
+/**
+ * [주의] 반드시 Google Apps Script 배포 후 받은 새로운 '웹 앱 URL'을 여기에 넣으세요.
+ * 배포 시 액세스 권한은 '모든 사용자(Anyone)'여야 합니다.
+ */
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxjwzzS3ICXplXppA1Yjw5WP-WW0dOGzBaaq2NVkTcnXStZHoFJzUDRfrCtQRqQimLH/exec";
 
 /**
  * Parses an uploaded Excel file into JSON data.
@@ -31,37 +34,48 @@ export const parseMasterExcel = (file: File): Promise<MasterDataRow[]> => {
 };
 
 /**
- * Sends audited data to the shared Google Sheet via Apps Script API.
- * Uses 'text/plain' to bypass complex CORS preflight checks in some environments,
- * which Google Apps Script handles well via e.postData.contents.
+ * Sends audited data to the shared Google Sheet.
+ * Transforms data keys to match the user's Google Sheet header names exactly.
  */
 export const syncAuditDataToCloud = async (data: MasterDataRow[]): Promise<{ success: boolean; count: number }> => {
+  // '자산실사 여부'가 'O'인 데이터만 필터링
   const auditedItems = data.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
   
   if (auditedItems.length === 0) return { success: false, count: 0 };
 
+  // 사용자님이 요청한 시트 열 제목에 맞춰 데이터 키(Key) 변환
+  const payload = auditedItems.map(row => ({
+    "자산번호": row[MASTER_COLUMNS.ASSET_NO] || "",
+    "상품코드": row[MASTER_COLUMNS.PROD_NO] || "",
+    "상품명": row[MASTER_COLUMNS.PROD_NAME] || "",
+    "제조사": row[MASTER_COLUMNS.MANUFACTURER] || "",
+    "모델": row[MASTER_COLUMNS.MODEL_NAME] || "",
+    "년식": row[MASTER_COLUMNS.PROD_YEAR] || "",
+    "차량번호": row[MASTER_COLUMNS.VEHICLE_NO] || "",
+    "차대번호": row[MASTER_COLUMNS.SERIAL_NO] || "", // 앱 내 시리얼번호를 차대번호로 매핑
+    "자산실사일": row[AUDIT_COLUMNS.DATE] || "",
+    "자산실사 여부": row[AUDIT_COLUMNS.STATUS] || "O"
+  }));
+
   try {
-    // 실제 Google Apps Script로 전송
-    const response = await fetch(GAS_URL, {
+    // GAS API 호출 (text/plain으로 전송하여 CORS 이슈 방지)
+    await fetch(GAS_URL, {
       method: "POST",
-      mode: "no-cors", // 브라우저 보안 정책상 no-cors를 사용하는 경우가 많음 (응답은 못 읽을 수 있으나 데이터는 감)
+      mode: "no-cors", 
       headers: {
         "Content-Type": "text/plain", 
       },
-      body: JSON.stringify(auditedItems),
+      body: JSON.stringify(payload),
     });
 
-    // no-cors 모드에서는 response.ok를 확인할 수 없으므로 성공으로 간주하거나 
-    // 실제 서버 로그를 통해 확인해야 합니다. 
-    // 여기서는 사용자 경험을 위해 성공 메시지를 반환합니다.
-    console.log("Data sent to GAS successfully:", auditedItems);
+    console.log("Data transformation complete. Payload sent to GAS:", payload);
     
     return {
       success: true,
-      count: auditedItems.length
+      count: payload.length
     };
   } catch (error) {
-    console.error("Sync Error:", error);
+    console.error("Critical Sync Error:", error);
     throw error;
   }
 };
