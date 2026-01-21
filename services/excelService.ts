@@ -5,9 +5,9 @@ import QRCode from "qrcode";
 import { MasterDataRow, ChecklistData, AUDIT_COLUMNS, MASTER_COLUMNS } from "../types";
 
 /**
- * [주의] 반드시 Google Apps Script 배포 후 받은 새로운 '웹 앱 URL'을 여기에 넣으세요.
+ * [중요] 구글 앱스 스크립트 배포 후 생성된 '웹 앱 URL'을 반드시 여기에 넣으세요.
  */
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwX3jrIWMNW9Ul0-jE8cIUU4ukuO1WmU9M5fQpAR1I9GYJzjqqpkEQBtvx_siXiBvlM/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzuSrzfWWrzQhQLiNrA67R15_5RThTGsKEojLeONJ62ma_kc-hsfAUYtFnYcLH-jRyO/exec";
 
 /**
  * Parses an uploaded Excel file into JSON data.
@@ -34,32 +34,24 @@ export const parseMasterExcel = (file: File): Promise<MasterDataRow[]> => {
 
 /**
  * Sends initial checklist data to Google Sheets (Checklist stage).
+ * QR is now handled by GAS using the IMAGE formula for better row synchronization.
  */
 export const syncChecklistToCloud = async (data: ChecklistData[]): Promise<{ success: boolean; count: number }> => {
   if (data.length === 0) return { success: false, count: 0 };
 
-  const payload = await Promise.all(data.map(async (item) => {
-    let qrBase64 = "";
-    try {
-      qrBase64 = await QRCode.toDataURL(item.mgmtNumber, { margin: 1, width: 200 });
-    } catch (err) {
-      console.error("QR Generation failed for", item.mgmtNumber, err);
-    }
-
-    return {
-      "QR": qrBase64,
-      "관리번호": String(item.mgmtNumber || "").trim(),
-      "자산번호": String(item.assetNumber || "").trim(),
-      "상품코드": String(item.productCode || "").trim(),
-      "상품명": String(item.productName || "").trim(),
-      "제조사": String(item.manufacturer || "").trim(),
-      "모델": String(item.model || "").trim(),
-      "년식": String(item.year || "").trim(),
-      "차량번호": String(item.vehicleNumber || "").trim(),
-      "차대번호": String(item.serialNumber || "").trim(),
-      "자산실사일": "", 
-      "자산실사 여부": ""
-    };
+  const payload = data.map((item) => ({
+    "관리번호": String(item.mgmtNumber || "").trim(),
+    "자산번호": String(item.assetNumber || "").trim(),
+    "상품코드": String(item.productCode || "").trim(),
+    "상품명": String(item.productName || "").trim(),
+    "제조사": String(item.manufacturer || "").trim(),
+    "모델": String(item.model || "").trim(),
+    "년식": String(item.year || "").trim(),
+    "차량번호": String(item.vehicleNumber || "").trim(),
+    "차대번호": String(item.serialNumber || "").trim(),
+    "자산실사일": "", 
+    "자산실사 여부": "",
+    "QR": "" // GAS에서 수식을 통해 자동 생성함
   }));
 
   try {
@@ -77,34 +69,26 @@ export const syncChecklistToCloud = async (data: ChecklistData[]): Promise<{ suc
 };
 
 /**
- * Sends audited data to Google Sheets via Apps Script.
+ * Sends audited data to Google Sheets.
  */
 export const syncAuditDataToCloud = async (data: MasterDataRow[]): Promise<{ success: boolean; count: number }> => {
   const auditedItems = data.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
   
   if (auditedItems.length === 0) return { success: false, count: 0 };
 
-  const payload = await Promise.all(auditedItems.map(async (row) => {
-    const mgmtNo = String(row[MASTER_COLUMNS.MGMT_NO] || "").trim();
-    let qrBase64 = "";
-    try {
-      qrBase64 = await QRCode.toDataURL(mgmtNo, { margin: 1, width: 200 });
-    } catch (err) {}
-
-    return {
-      "QR": qrBase64,
-      "관리번호": mgmtNo,
-      "자산번호": String(row[MASTER_COLUMNS.ASSET_NO] || "").trim(),
-      "상품코드": String(row[MASTER_COLUMNS.PROD_NO] || "").trim(),
-      "상품명": String(row[MASTER_COLUMNS.PROD_NAME] || "").trim(),
-      "제조사": String(row[MASTER_COLUMNS.MANUFACTURER] || "").trim(),
-      "모델": String(row[MASTER_COLUMNS.MODEL_NAME] || "").trim(),
-      "년식": String(row[MASTER_COLUMNS.PROD_YEAR] || "").trim(),
-      "차량번호": String(row[MASTER_COLUMNS.VEHICLE_NO] || "").trim(),
-      "차대번호": String(row[MASTER_COLUMNS.SERIAL_NO] || "").trim(),
-      "자산실사일": row[AUDIT_COLUMNS.DATE] || new Date().toLocaleDateString(),
-      "자산실사 여부": "O"
-    };
+  const payload = auditedItems.map((row) => ({
+    "관리번호": String(row[MASTER_COLUMNS.MGMT_NO] || "").trim(),
+    "자산번호": String(row[MASTER_COLUMNS.ASSET_NO] || "").trim(),
+    "상품코드": String(row[MASTER_COLUMNS.PROD_NO] || "").trim(),
+    "상품명": String(row[MASTER_COLUMNS.PROD_NAME] || "").trim(),
+    "제조사": String(row[MASTER_COLUMNS.MANUFACTURER] || "").trim(),
+    "모델": String(row[MASTER_COLUMNS.MODEL_NAME] || "").trim(),
+    "년식": String(row[MASTER_COLUMNS.PROD_YEAR] || "").trim(),
+    "차량번호": String(row[MASTER_COLUMNS.VEHICLE_NO] || "").trim(),
+    "차대번호": String(row[MASTER_COLUMNS.SERIAL_NO] || "").trim(),
+    "자산실사일": row[AUDIT_COLUMNS.DATE] || new Date().toLocaleDateString(),
+    "자산실사 여부": "O",
+    "QR": "" 
   }));
 
   try {
@@ -122,13 +106,12 @@ export const syncAuditDataToCloud = async (data: MasterDataRow[]): Promise<{ suc
 };
 
 /**
- * Exports master data to Excel with actual QR images embedded in cells.
+ * Exports master data to Excel (Local download maintains QR embedding logic).
  */
 export const exportMasterWithImages = async (data: MasterDataRow[], fileName: string = "master_with_qr.xlsx") => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Asset List");
 
-  // Define columns
   sheet.columns = [
     { header: "QR", key: "qr", width: 15 },
     { header: "관리번호", key: "mgmt", width: 20 },
@@ -142,7 +125,6 @@ export const exportMasterWithImages = async (data: MasterDataRow[], fileName: st
     { header: "실사여부", key: "auditStatus", width: 10 },
   ];
 
-  // Header Style
   sheet.getRow(1).font = { bold: true };
   sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
@@ -150,11 +132,8 @@ export const exportMasterWithImages = async (data: MasterDataRow[], fileName: st
     const rowData = data[i];
     const mgmtNo = String(rowData[MASTER_COLUMNS.MGMT_NO] || "").trim();
     const currentRow = i + 2;
-
-    // Set row height for QR image
     sheet.getRow(currentRow).height = 80;
 
-    // Add Text Data
     sheet.addRow({
       mgmt: mgmtNo,
       asset: rowData[MASTER_COLUMNS.ASSET_NO],
@@ -167,40 +146,25 @@ export const exportMasterWithImages = async (data: MasterDataRow[], fileName: st
       auditStatus: rowData[AUDIT_COLUMNS.STATUS],
     });
 
-    // Generate and Embed QR Image
     if (mgmtNo) {
       try {
         const qrBase64 = await QRCode.toDataURL(mgmtNo, { margin: 1, width: 200 });
-        const imageId = workbook.addImage({
-          base64: qrBase64,
-          extension: 'png',
-        });
-
-        // Insert image at column A (index 0), row i+2
+        const imageId = workbook.addImage({ base64: qrBase64, extension: 'png' });
         sheet.addImage(imageId, {
-          tl: { col: 0.1, row: i + 1.1 }, // Top-left anchor
-          ext: { width: 100, height: 100 } // Size in pixels
+          tl: { col: 0.1, row: i + 1.1 },
+          ext: { width: 100, height: 100 }
         });
-      } catch (err) {
-        console.error("QR embedding failed", err);
-      }
+      } catch (err) {}
     }
-    
     sheet.getRow(currentRow).alignment = { vertical: 'middle', horizontal: 'center' };
   }
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  a.click();
+  const a = document.createElement("a"); a.href = url; a.download = fileName; a.click();
 };
 
-/**
- * Legacy Excel export (Text only)
- */
 export const exportMasterWithAudit = (data: MasterDataRow[], fileName: string = "master_audit_result.xlsx") => {
   const worksheet = XLSX.utils.json_to_sheet(data);
   const workbook = XLSX.utils.book_new();

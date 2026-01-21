@@ -10,17 +10,15 @@ import {
   CameraOff, 
   CloudUpload, 
   X, 
-  Clock,
   Loader2,
   Check,
   ExternalLink,
   RefreshCcw,
   Camera,
-  TestTube,
-  Download
+  TestTube
 } from "lucide-react";
 import { MasterDataRow, MASTER_COLUMNS, AUDIT_COLUMNS } from "../types";
-import { syncAuditDataToCloud, exportMasterWithImages } from "../services/excelService";
+import { syncAuditDataToCloud } from "../services/excelService";
 
 interface AuditPageProps {
   masterData: MasterDataRow[];
@@ -36,7 +34,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCoolingDown, setIsCoolingDown] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
@@ -225,19 +222,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     }
   };
 
-  const handleExcelExportWithQR = async () => {
-    if (masterData.length === 0) return;
-    setIsExporting(true);
-    try {
-      await exportMasterWithImages(masterData, `자산실사_리스트_QR포함_${new Date().getTime()}.xlsx`);
-    } catch (err) {
-      console.error(err);
-      alert("엑셀 생성 중 오류가 발생했습니다.");
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
@@ -266,20 +250,12 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
         </div>
         
         <div className="flex items-center gap-2">
-          <button 
-            onClick={handleExcelExportWithQR}
-            disabled={isExporting}
-            className="flex items-center gap-2 px-4 py-4 rounded-2xl font-bold bg-green-50 text-green-700 hover:bg-green-100 transition-all border border-green-200 text-sm"
-          >
-            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} QR 포함 엑셀
-          </button>
-
-          <button 
-            onClick={loadMockData}
-            className="flex items-center gap-2 px-4 py-4 rounded-2xl font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all border border-amber-200 text-sm"
-          >
-            <TestTube className="w-4 h-4" /> 목업 로드
-          </button>
+          // <button 
+          //   onClick={loadMockData}
+          //   className="flex items-center gap-2 px-4 py-4 rounded-2xl font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all border border-amber-200 text-sm"
+          // >
+          //   <TestTube className="w-4 h-4" /> 목업 로드
+          // </button>
 
           <button 
             type="button"

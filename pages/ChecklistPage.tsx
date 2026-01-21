@@ -8,8 +8,7 @@ import {
   FileText, 
   Loader2,
   ListFilter,
-  CloudUpload,
-  Check
+  CloudUpload
 } from "lucide-react";
 import { MasterDataRow, ChecklistData, MASTER_COLUMNS } from "../types";
 import { downloadChecklistExcel, syncChecklistToCloud } from "../services/excelService";
@@ -24,9 +23,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
   const [mgmtNumbersInput, setMgmtNumbersInput] = useState("");
   const [engineerInput, setEngineerInput] = useState("");
   const [currentChecklists, setCurrentChecklists] = useState<ChecklistData[]>([]);
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncDone, setSyncDone] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // 통합 로딩 상태
   const [warnText, setWarnText] = useState<string | null>("");
 
   const removeLeadingQuote = (str: string): string => {
@@ -80,26 +77,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
     });
 
     setCurrentChecklists(foundChecklists);
-    setSyncDone(false); // 새로운 검색 시 전송 상태 초기화
     setWarnText(missingMgmts.length > 0 ? `다음 번호를 찾을 수 없습니다: ${missingMgmts.join(", ")}` : "");
-  };
-
-  const handleCloudSync = async () => {
-    if (currentChecklists.length === 0) return;
-    
-    setIsSyncing(true);
-    try {
-      const result = await syncChecklistToCloud(currentChecklists);
-      if (result.success) {
-        setSyncDone(true);
-        alert(`${result.count}건의 데이터가 구글 시트로 전송되었습니다.`);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("클라우드 전송 중 오류가 발생했습니다.");
-    } finally {
-      setIsSyncing(false);
-    }
   };
 
   const getDate = () => {
@@ -107,30 +85,66 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
     return `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
   };
 
-  const handleExcelExport = () => {
-    const yyyy_mm_dd = getDate();
+  // 서버에만 저장
+  const handleSaveOnly = async () => {
     if (currentChecklists.length === 0) return;
-    const downloadName = currentChecklists.length === 1
-        ? `정비_체크리스트_${currentChecklists[0].mgmtNumber}_${yyyy_mm_dd}.xlsx`
-        : `정비_체크리스트_${yyyy_mm_dd}.xlsx`;
-
-    downloadChecklistExcel(currentChecklists, engineerInput, downloadName);
+    
+    setIsProcessing(true);
+    try {
+      await syncChecklistToCloud(currentChecklists);
+      alert(`${currentChecklists.length}건의 데이터가 성공적으로 서버에 저장되었습니다.`);
+    } catch (err) {
+      console.error(err);
+      alert("서버 저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handlePdfExport = async () => {
-    const yyyy_mm_dd = getDate();
+  // 엑셀 다운로드 (전송 후 다운로드)
+  const handleExcelExport = async () => {
     if (currentChecklists.length === 0) return;
-    setIsExportingPdf(true);
+    
+    setIsProcessing(true);
     try {
+      // 1. 시트로 먼저 전송
+      await syncChecklistToCloud(currentChecklists);
+      
+      // 2. 엑셀 생성 및 다운로드
+      const yyyy_mm_dd = getDate();
+      const downloadName = currentChecklists.length === 1
+          ? `정비_체크리스트_${currentChecklists[0].mgmtNumber}_${yyyy_mm_dd}.xlsx`
+          : `정비_체크리스트_${yyyy_mm_dd}.xlsx`;
+
+      await downloadChecklistExcel(currentChecklists, engineerInput, downloadName);
+    } catch (err) {
+      console.error(err);
+      alert("처리 중 오류가 발생했습니다. (클라우드 전송 실패 시 다운로드가 제한될 수 있습니다)");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // PDF 다운로드 (전송 후 다운로드)
+  const handlePdfExport = async () => {
+    if (currentChecklists.length === 0) return;
+    
+    setIsProcessing(true);
+    try {
+      // 1. 시트로 먼저 전송
+      await syncChecklistToCloud(currentChecklists);
+      
+      // 2. PDF 생성 및 다운로드
+      const yyyy_mm_dd = getDate();
       const downloadName = currentChecklists.length === 1
           ? `정비_체크리스트_${currentChecklists[0].mgmtNumber}_${yyyy_mm_dd}.pdf`
           : `정비_체크리스트_${yyyy_mm_dd}.pdf`;
       await downloadChecklistPDF("checklist-container", downloadName);
     } catch (err) {
       console.error(err);
-      alert("PDF 생성 도중 오류가 발생했습니다.");
+      alert("처리 중 오류가 발생했습니다. (클라우드 전송 실패 시 다운로드가 제한될 수 있습니다)");
     } finally {
-      setIsExportingPdf(false);
+      setIsProcessing(false);
     }
   };
 
@@ -176,9 +190,10 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
 
         <button
           onClick={handleSearch}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 text-lg"
+          disabled={isProcessing}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 text-lg disabled:bg-gray-400"
         >
-          <Search className="w-6 h-6" /> 데이터 일괄 매칭
+          {isProcessing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Search className="w-6 h-6" />} 데이터 일괄 매칭
         </button>
 
         {currentChecklists.length > 0 && (
@@ -186,36 +201,30 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
             <div className="flex flex-col md:flex-row md:items-center justify-between sticky top-20 z-30 bg-gray-50/90 backdrop-blur px-4 py-4 rounded-2xl border border-gray-200 shadow-sm gap-4">
               <div className="flex flex-col">
                 <h4 className="font-black text-gray-900">매칭 결과: {currentChecklists.length}건</h4>
-                <p className="text-[10px] text-gray-500 font-bold">전송 시 자산실사일/여부는 빈 값으로 처리됩니다.</p>
+                <p className="text-[10px] text-gray-500 font-bold">다운로드 또는 저장 시 자동으로 시트에 전송됩니다.</p>
               </div>
               
               <div className="flex flex-wrap gap-2">
                 <button 
-                  onClick={handleCloudSync} 
-                  disabled={isSyncing || syncDone}
-                  className={`px-4 py-2 rounded-lg text-sm font-black flex items-center gap-2 shadow-sm transition-all ${
-                    syncDone 
-                    ? "bg-green-100 text-green-700 cursor-default" 
-                    : "bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-gray-400"
-                  }`}
+                  onClick={handleSaveOnly} 
+                  disabled={isProcessing}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm disabled:bg-gray-400 transition-all"
                 >
-                  {isSyncing ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : syncDone ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <CloudUpload className="w-4 h-4" />
-                  )}
-                  {syncDone ? "시트 전송 완료" : "시트로 전송 (초기 등록)"}
+                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />} 저장
                 </button>
-
-                <div className="h-8 w-px bg-gray-200 mx-1 hidden md:block"></div>
-
-                <button onClick={handleExcelExport} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm">
-                  <Download className="w-4 h-4" /> 엑셀 다운로드
+                <button 
+                  onClick={handleExcelExport} 
+                  disabled={isProcessing}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm disabled:bg-gray-400 transition-all"
+                >
+                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} 엑셀 다운로드
                 </button>
-                <button onClick={handlePdfExport} disabled={isExportingPdf} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm disabled:bg-gray-400">
-                  {isExportingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF 다운로드
+                <button 
+                  onClick={handlePdfExport} 
+                  disabled={isProcessing} 
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm disabled:bg-gray-400 transition-all"
+                >
+                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF 다운로드
                 </button>
               </div>
             </div>
