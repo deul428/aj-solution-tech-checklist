@@ -6,7 +6,6 @@ import { MasterDataRow, ChecklistData, AUDIT_COLUMNS, MASTER_COLUMNS } from "../
 
 /**
  * [주의] 반드시 Google Apps Script 배포 후 받은 새로운 '웹 앱 URL'을 여기에 넣으세요.
- * 배포 시 액세스 권한은 '모든 사용자(Anyone)'여야 합니다.
  */
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxjwzzS3ICXplXppA1Yjw5WP-WW0dOGzBaaq2NVkTcnXStZHoFJzUDRfrCtQRqQimLH/exec";
 
@@ -34,31 +33,39 @@ export const parseMasterExcel = (file: File): Promise<MasterDataRow[]> => {
 };
 
 /**
- * Sends audited data to the shared Google Sheet.
- * Transforms data keys to match the user's Google Sheet header names exactly.
+ * Sends audited data to Google Sheets via Apps Script.
+ * Appends new rows with all specified asset details.
  */
 export const syncAuditDataToCloud = async (data: MasterDataRow[]): Promise<{ success: boolean; count: number }> => {
-  // '자산실사 여부'가 'O'인 데이터만 필터링
+  // 실사 여부가 'O'인 데이터만 필터링
   const auditedItems = data.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
   
-  if (auditedItems.length === 0) return { success: false, count: 0 };
+  if (auditedItems.length === 0) {
+    console.warn("No items marked as audited ('O') to sync.");
+    return { success: false, count: 0 };
+  }
 
-  // 사용자님이 요청한 시트 열 제목에 맞춰 데이터 키(Key) 변환
+  // 사용자 요청에 따른 엑셀 시트 헤더명과 1:1 매칭 변환
   const payload = auditedItems.map(row => ({
-    "자산번호": row[MASTER_COLUMNS.ASSET_NO] || "",
-    "상품코드": row[MASTER_COLUMNS.PROD_NO] || "",
-    "상품명": row[MASTER_COLUMNS.PROD_NAME] || "",
-    "제조사": row[MASTER_COLUMNS.MANUFACTURER] || "",
-    "모델": row[MASTER_COLUMNS.MODEL_NAME] || "",
-    "년식": row[MASTER_COLUMNS.PROD_YEAR] || "",
-    "차량번호": row[MASTER_COLUMNS.VEHICLE_NO] || "",
-    "차대번호": row[MASTER_COLUMNS.SERIAL_NO] || "", // 앱 내 시리얼번호를 차대번호로 매핑
-    "자산실사일": row[AUDIT_COLUMNS.DATE] || "",
-    "자산실사 여부": row[AUDIT_COLUMNS.STATUS] || "O"
+    "자산번호": String(row[MASTER_COLUMNS.ASSET_NO] || "").trim(),
+    "관리번호": String(row[MASTER_COLUMNS.MGMT_NO] || "").trim(),
+    "상품코드": String(row[MASTER_COLUMNS.PROD_NO] || "").trim(),
+    "상품명": String(row[MASTER_COLUMNS.PROD_NAME] || "").trim(),
+    "제조사": String(row[MASTER_COLUMNS.MANUFACTURER] || "").trim(),
+    "모델": String(row[MASTER_COLUMNS.MODEL_NAME] || "").trim(),
+    "년식": String(row[MASTER_COLUMNS.PROD_YEAR] || "").trim(),
+    "차량번호": String(row[MASTER_COLUMNS.VEHICLE_NO] || "").trim(),
+    "차대번호": String(row[MASTER_COLUMNS.SERIAL_NO] || "").trim(),
+    "자산실사일": row[AUDIT_COLUMNS.DATE] || new Date().toLocaleDateString(),
+    "자산실사 여부": "O"
   }));
 
+  console.log("Attempting to sync payload:", payload);
+
   try {
-    // GAS API 호출 (text/plain으로 전송하여 CORS 이슈 방지)
+    // Google Apps Script는 Redirect(302)를 사용하므로 
+    // 브라우저에서 응답 본문을 읽으려면 no-cors를 써야 하는 경우가 많습니다.
+    // 하지만 데이터 전송 자체는 이뤄집니다.
     await fetch(GAS_URL, {
       method: "POST",
       mode: "no-cors", 
@@ -68,14 +75,12 @@ export const syncAuditDataToCloud = async (data: MasterDataRow[]): Promise<{ suc
       body: JSON.stringify(payload),
     });
 
-    console.log("Data transformation complete. Payload sent to GAS:", payload);
-    
     return {
       success: true,
       count: payload.length
     };
   } catch (error) {
-    console.error("Critical Sync Error:", error);
+    console.error("Sync fetch error:", error);
     throw error;
   }
 };
