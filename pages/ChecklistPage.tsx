@@ -14,6 +14,7 @@ import { MasterDataRow, ChecklistData, MASTER_COLUMNS } from "../types";
 import { downloadChecklistExcel, syncChecklistToCloud } from "../services/excelService";
 import { downloadChecklistPDF } from "../services/pdfService";
 import ChecklistPreview from "../components/ChecklistPreview";
+import LoadingOverlay from "../components/LoadingOverlay";
 
 interface ChecklistPageProps {
   masterData: MasterDataRow[];
@@ -23,7 +24,8 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
   const [mgmtNumbersInput, setMgmtNumbersInput] = useState("");
   const [engineerInput, setEngineerInput] = useState("");
   const [currentChecklists, setCurrentChecklists] = useState<ChecklistData[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false); // 통합 로딩 상태
+  const [isProcessing, setIsProcessing] = useState(false); 
+  const [processingMessage, setProcessingMessage] = useState("처리 중입니다...");
   const [warnText, setWarnText] = useState<string | null>("");
 
   const removeLeadingQuote = (str: string): string => {
@@ -89,6 +91,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
   const handleSaveOnly = async () => {
     if (currentChecklists.length === 0) return;
     
+    setProcessingMessage("서버에 데이터를 등록 중입니다...");
     setIsProcessing(true);
     try {
       await syncChecklistToCloud(currentChecklists);
@@ -105,12 +108,11 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
   const handleExcelExport = async () => {
     if (currentChecklists.length === 0) return;
     
+    setProcessingMessage("데이터 전송 및 엑셀 파일 생성 중...");
     setIsProcessing(true);
     try {
-      // 1. 시트로 먼저 전송
       await syncChecklistToCloud(currentChecklists);
       
-      // 2. 엑셀 생성 및 다운로드
       const yyyy_mm_dd = getDate();
       const downloadName = currentChecklists.length === 1
           ? `정비_체크리스트_${currentChecklists[0].mgmtNumber}_${yyyy_mm_dd}.xlsx`
@@ -119,7 +121,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
       await downloadChecklistExcel(currentChecklists, engineerInput, downloadName);
     } catch (err) {
       console.error(err);
-      alert("처리 중 오류가 발생했습니다. (클라우드 전송 실패 시 다운로드가 제한될 수 있습니다)");
+      alert("처리 중 오류가 발생했습니다.");
     } finally {
       setIsProcessing(false);
     }
@@ -129,12 +131,11 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
   const handlePdfExport = async () => {
     if (currentChecklists.length === 0) return;
     
+    setProcessingMessage("데이터 전송 및 PDF 파일 생성 중...");
     setIsProcessing(true);
     try {
-      // 1. 시트로 먼저 전송
       await syncChecklistToCloud(currentChecklists);
       
-      // 2. PDF 생성 및 다운로드
       const yyyy_mm_dd = getDate();
       const downloadName = currentChecklists.length === 1
           ? `정비_체크리스트_${currentChecklists[0].mgmtNumber}_${yyyy_mm_dd}.pdf`
@@ -142,7 +143,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
       await downloadChecklistPDF("checklist-container", downloadName);
     } catch (err) {
       console.error(err);
-      alert("처리 중 오류가 발생했습니다. (클라우드 전송 실패 시 다운로드가 제한될 수 있습니다)");
+      alert("처리 중 오류가 발생했습니다.");
     } finally {
       setIsProcessing(false);
     }
@@ -150,8 +151,10 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
 
   return (
     <div className="max-w-5xl mx-auto py-10 px-6">
+      {isProcessing && <LoadingOverlay message={processingMessage} />}
+
       <div className="flex items-center gap-3 mb-8">
-        <div className="bg-blue-600 p-2 rounded-lg text-white">
+        <div className="bg-blue-600 p-2 rounded-lg text-white shadow-lg shadow-blue-100">
           <ListFilter className="w-6 h-6" />
         </div>
         <h2 className="text-2xl font-bold text-gray-900">체크리스트 일괄 생성</h2>
@@ -166,11 +169,11 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
             value={mgmtNumbersInput}
             onChange={(e) => setMgmtNumbersInput(e.target.value)}
             placeholder="예: 851BX198 900CX200"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 h-32 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 h-32 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all font-mono text-sm"
           />
           {warnText && (
-            <div className="mt-3 flex items-center gap-2 text-red-500 text-sm font-medium bg-red-50 p-3 rounded-lg">
-              <AlertCircle className="w-4 h-4" /> {warnText}
+            <div className="mt-3 flex items-center gap-2 text-red-500 text-sm font-bold bg-red-50 p-4 rounded-xl border border-red-100">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" /> {warnText}
             </div>
           )}
         </section>
@@ -184,47 +187,47 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
             value={engineerInput}
             onChange={(e) => setEngineerInput(e.target.value)}
             placeholder="이름을 입력하세요"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none font-bold"
           />
         </section>
 
         <button
           onClick={handleSearch}
           disabled={isProcessing}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 text-lg disabled:bg-gray-400"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-xl transition-all flex items-center justify-center gap-3 text-lg disabled:bg-gray-400 active:scale-95"
         >
-          {isProcessing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Search className="w-6 h-6" />} 데이터 일괄 매칭
+          <Search className="w-6 h-6" /> 데이터 일괄 매칭
         </button>
 
         {currentChecklists.length > 0 && (
           <div className="mt-12 space-y-8 no-print">
-            <div className="flex flex-col md:flex-row md:items-center justify-between sticky top-20 z-30 bg-gray-50/90 backdrop-blur px-4 py-4 rounded-2xl border border-gray-200 shadow-sm gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between sticky top-20 z-30 bg-white/80 backdrop-blur-md px-6 py-5 rounded-3xl border border-gray-200 shadow-xl gap-4">
               <div className="flex flex-col">
-                <h4 className="font-black text-gray-900">매칭 결과: {currentChecklists.length}건</h4>
-                <p className="text-[10px] text-gray-500 font-bold">다운로드 또는 저장 시 자동으로 시트에 전송됩니다.</p>
+                <h4 className="font-black text-gray-900 text-lg">매칭 결과: {currentChecklists.length}건</h4>
+                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">Cloud Synchronization Enabled</p>
               </div>
               
               <div className="flex flex-wrap gap-2">
                 <button 
                   onClick={handleSaveOnly} 
                   disabled={isProcessing}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm disabled:bg-gray-400 transition-all"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-black flex items-center gap-2 shadow-lg shadow-indigo-100 disabled:bg-gray-400 transition-all active:scale-95"
                 >
-                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />} 저장
+                  <CloudUpload className="w-4 h-4" /> 저장
                 </button>
                 <button 
                   onClick={handleExcelExport} 
                   disabled={isProcessing}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm disabled:bg-gray-400 transition-all"
+                  className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl text-sm font-black flex items-center gap-2 shadow-lg shadow-green-100 disabled:bg-gray-400 transition-all active:scale-95"
                 >
-                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} 엑셀 다운로드
+                  <Download className="w-4 h-4" /> 엑셀 다운로드
                 </button>
                 <button 
                   onClick={handlePdfExport} 
                   disabled={isProcessing} 
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm disabled:bg-gray-400 transition-all"
+                  className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl text-sm font-black flex items-center gap-2 shadow-lg shadow-red-100 disabled:bg-gray-400 transition-all active:scale-95"
                 >
-                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF 다운로드
+                  <FileText className="w-4 h-4" /> PDF 다운로드
                 </button>
               </div>
             </div>

@@ -250,13 +250,13 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
         </div>
         
         <div className="flex items-center gap-2">
-          // <button 
-          //   onClick={loadMockData}
-          //   className="flex items-center gap-2 px-4 py-4 rounded-2xl font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all border border-amber-200 text-sm"
-          // >
-          //   <TestTube className="w-4 h-4" /> 목업 로드
-          // </button>
-
+          {/*<button 
+            onClick={loadMockData}
+            className="flex items-center gap-2 px-4 py-4 rounded-2xl font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all border border-amber-200 text-sm"
+          >
+            <TestTube className="w-4 h-4" /> 목업 로드
+          </button>
+*/}
           <button 
             type="button"
             onClick={handleTransfer}
