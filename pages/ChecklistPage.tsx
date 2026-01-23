@@ -18,9 +18,10 @@ import LoadingOverlay from "../components/LoadingOverlay";
 
 interface ChecklistPageProps {
   masterData: MasterDataRow[];
+  serviceUrl: string;
 }
 
-const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
+const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl }) => {
   const [mgmtNumbersInput, setMgmtNumbersInput] = useState("");
   const [engineerInput, setEngineerInput] = useState("");
   const [currentChecklists, setCurrentChecklists] = useState<ChecklistData[]>([]);
@@ -35,7 +36,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
 
   const handleSearch = () => {
     if (!masterData.length) {
-      alert("먼저 마스터 엑셀 파일을 업로드해 주세요.");
+      alert("데이터를 불러오는 중이거나 데이터가 없습니다.");
       return;
     }
 
@@ -93,7 +94,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
     setProcessingMessage("서버에 데이터를 등록 중입니다...");
     setIsProcessing(true);
     try {
-      await syncChecklistToCloud(currentChecklists);
+      await syncChecklistToCloud(serviceUrl, currentChecklists);
       alert(`${currentChecklists.length}건의 데이터가 성공적으로 서버에 저장되었습니다.`);
     } catch (err) {
       console.error(err);
@@ -109,7 +110,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
     setProcessingMessage("데이터 전송 및 엑셀 파일 생성 중...");
     setIsProcessing(true);
     try {
-      await syncChecklistToCloud(currentChecklists);
+      await syncChecklistToCloud(serviceUrl, currentChecklists);
       
       const yyyy_mm_dd = getDate();
       const downloadName = currentChecklists.length === 1
@@ -131,7 +132,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData }) => {
     setProcessingMessage("데이터 전송 및 PDF 파일 생성 중...");
     setIsProcessing(true);
     try {
-      await syncChecklistToCloud(currentChecklists);
+      await syncChecklistToCloud(serviceUrl, currentChecklists);
       
       const yyyy_mm_dd = getDate();
       const downloadName = currentChecklists.length === 1

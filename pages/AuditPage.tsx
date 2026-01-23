@@ -23,9 +23,10 @@ import { syncAuditDataToCloud } from "../services/excelService";
 interface AuditPageProps {
   masterData: MasterDataRow[];
   setMasterData: React.Dispatch<React.SetStateAction<MasterDataRow[]>>;
+  serviceUrl: string;
 }
 
-const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
+const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, serviceUrl }) => {
   const [scannedResult, setScannedResult] = useState<string | null>(null);
   const [foundRow, setFoundRow] = useState<MasterDataRow | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -100,7 +101,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
   }, []);
 
   const handleScanSuccess = (decodedText: string) => {
-    // 쿨다운 중이거나 모달이 이미 떠있으면 스캔 이벤트를 무시함
     if (showModal || isCoolingDown || isSyncing) return;
 
     const trimmedText = decodedText.trim();
@@ -114,7 +114,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     setFoundRow(match || null);
     setShowModal(true);
 
-    // 스캔 성공 즉시 카메라 일시정지
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       html5QrCodeRef.current.pause();
     }
@@ -145,11 +144,8 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
     setScannedResult(null);
     setFoundRow(null);
     
-    // 모달이 닫히면 쿨다운 모드 진입
     setIsCoolingDown(true);
 
-    // 2초 뒤에만 카메라를 다시 재개(resume)하고 쿨다운을 해제함
-    // 이렇게 하면 사용자가 휴대폰을 움직일 시간을 벌 수 있고 중복 스캔을 방지함
     setTimeout(() => {
       setIsCoolingDown(false);
       if (html5QrCodeRef.current) {
@@ -166,7 +162,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData }) => {
 
     setIsSyncing(true);
     try {
-      const result = await syncAuditDataToCloud(masterData);
+      const result = await syncAuditDataToCloud(serviceUrl, masterData);
       const now = new Date();
       setLastSyncTime(now.toLocaleTimeString());
 

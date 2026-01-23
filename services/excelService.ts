@@ -5,9 +5,25 @@ import QRCode from "qrcode";
 import { MasterDataRow, ChecklistData, AUDIT_COLUMNS, MASTER_COLUMNS } from "../types";
 
 /**
- * [중요] 구글 앱스 스크립트 배포 후 생성된 '웹 앱 URL'을 반드시 여기에 넣으세요.
+ * 기본 구글 앱스 스크립트 배포 URL (App.tsx에서 관리됨)
  */
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyNyDEmwfxsxeTrUN_8QJVRFTQZXr3rQHzzu1Vhpg1SiB6ZVSR-H0EHoUoHgnr8ZE3Xdw/exec";
+export const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbyZEb3wiuekGvFaGaDZZ7di3dXi8eCLzumIKGZbZS064XYLk0BPVpC56nbdcLnARjyY-Q/exec";
+
+/**
+ * Fetches master data from Google Sheets via dynamic GAS URL.
+ */
+export const fetchMasterFromCloud = async (url: string): Promise<MasterDataRow[]> => {
+  try {
+    const response = await fetch(`${url}?action=read`);
+    if (!response.ok) throw new Error("Cloud fetch failed");
+    
+    const data = await response.json();
+    return data as MasterDataRow[];
+  } catch (error) {
+    console.error("Error fetching master from cloud:", error);
+    throw error;
+  }
+};
 
 /**
  * Parses an uploaded Excel file into JSON data.
@@ -33,10 +49,9 @@ export const parseMasterExcel = (file: File): Promise<MasterDataRow[]> => {
 };
 
 /**
- * Sends initial checklist data to Google Sheets (Checklist stage).
- * QR is now handled by GAS using the IMAGE formula for better row synchronization.
+ * Sends initial checklist data to Google Sheets.
  */
-export const syncChecklistToCloud = async (data: ChecklistData[]): Promise<{ success: boolean; count: number }> => {
+export const syncChecklistToCloud = async (url: string, data: ChecklistData[]): Promise<{ success: boolean; count: number }> => {
   if (data.length === 0) return { success: false, count: 0 };
 
   const payload = data.map((item) => ({
@@ -51,11 +66,11 @@ export const syncChecklistToCloud = async (data: ChecklistData[]): Promise<{ suc
     "차대번호": String(item.serialNumber || "").trim(),
     "자산실사일": "", 
     "자산실사 여부": "",
-    "QR": "" // GAS에서 수식을 통해 자동 생성함
+    "QR": "" 
   }));
 
   try {
-    await fetch(GAS_URL, {
+    await fetch(url, {
       method: "POST",
       mode: "no-cors", 
       headers: { "Content-Type": "text/plain" },
@@ -71,7 +86,7 @@ export const syncChecklistToCloud = async (data: ChecklistData[]): Promise<{ suc
 /**
  * Sends audited data to Google Sheets.
  */
-export const syncAuditDataToCloud = async (data: MasterDataRow[]): Promise<{ success: boolean; count: number }> => {
+export const syncAuditDataToCloud = async (url: string, data: MasterDataRow[]): Promise<{ success: boolean; count: number }> => {
   const auditedItems = data.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
   
   if (auditedItems.length === 0) return { success: false, count: 0 };
@@ -92,7 +107,7 @@ export const syncAuditDataToCloud = async (data: MasterDataRow[]): Promise<{ suc
   }));
 
   try {
-    await fetch(GAS_URL, {
+    await fetch(url, {
       method: "POST",
       mode: "no-cors", 
       headers: { "Content-Type": "text/plain" },
@@ -106,7 +121,7 @@ export const syncAuditDataToCloud = async (data: MasterDataRow[]): Promise<{ suc
 };
 
 /**
- * Exports master data to Excel (Local download maintains QR embedding logic).
+ * Exports master data to Excel.
  */
 export const exportMasterWithImages = async (data: MasterDataRow[], fileName: string = "master_with_qr.xlsx") => {
   const workbook = new ExcelJS.Workbook();
@@ -163,13 +178,6 @@ export const exportMasterWithImages = async (data: MasterDataRow[], fileName: st
   const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a"); a.href = url; a.download = fileName; a.click();
-};
-
-export const exportMasterWithAudit = (data: MasterDataRow[], fileName: string = "master_audit_result.xlsx") => {
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Audit Result");
-  XLSX.writeFile(workbook, fileName);
 };
 
 export const downloadChecklistExcel = async (
