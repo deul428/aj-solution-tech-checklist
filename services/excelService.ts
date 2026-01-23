@@ -7,7 +7,7 @@ import { MasterDataRow, ChecklistData, AUDIT_COLUMNS, MASTER_COLUMNS } from "../
 /**
  * [중요] 구글 앱스 스크립트 배포 후 생성된 '웹 앱 URL'을 반드시 여기에 넣으세요.
  */
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzuSrzfWWrzQhQLiNrA67R15_5RThTGsKEojLeONJ62ma_kc-hsfAUYtFnYcLH-jRyO/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbx7IlJGCa5e5H1XRwkCn2nWdHoKwiQFbP_yenxYRXIn2GxluBQnBFIgZ3dF71pzmVuYtw/exec";
 
 /**
  * Parses an uploaded Excel file into JSON data.
