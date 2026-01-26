@@ -1,11 +1,11 @@
 
 import React, { useState } from "react";
-import { 
-  Search, 
-  Download, 
-  UserRoundPen, 
-  AlertCircle, 
-  FileText, 
+import {
+  Search,
+  Download,
+  UserRoundPen,
+  AlertCircle,
+  FileText,
   Loader2,
   ListFilter,
   CloudUpload
@@ -26,7 +26,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl, s
   const [mgmtNumbersInput, setMgmtNumbersInput] = useState("");
   const [engineerInput, setEngineerInput] = useState("");
   const [currentChecklists, setCurrentChecklists] = useState<ChecklistData[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false); 
+  const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState("처리 중입니다...");
   const [warnText, setWarnText] = useState<string | null>("");
 
@@ -91,7 +91,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl, s
 
   const handleSaveOnly = async () => {
     if (currentChecklists.length === 0) return;
-    
+
     setProcessingMessage("서버에 데이터를 등록 중입니다...");
     setIsProcessing(true);
     try {
@@ -107,16 +107,16 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl, s
 
   const handleExcelExport = async () => {
     if (currentChecklists.length === 0) return;
-    
+
     setProcessingMessage("데이터 전송 및 엑셀 파일 생성 중...");
     setIsProcessing(true);
     try {
       await syncChecklistToCloud(serviceUrl, currentChecklists, selectedSheet);
-      
+
       const yyyy_mm_dd = getDate();
       const downloadName = currentChecklists.length === 1
-          ? `정비_체크리스트_${currentChecklists[0].mgmtNumber}_${yyyy_mm_dd}.xlsx`
-          : `정비_체크리스트_${yyyy_mm_dd}.xlsx`;
+        ? `정비_체크리스트_${currentChecklists[0].mgmtNumber}_${yyyy_mm_dd}.xlsx`
+        : `정비_체크리스트_${yyyy_mm_dd}.xlsx`;
 
       await downloadChecklistExcel(currentChecklists, engineerInput, downloadName);
     } catch (err) {
@@ -129,16 +129,16 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl, s
 
   const handlePdfExport = async () => {
     if (currentChecklists.length === 0) return;
-    
+
     setProcessingMessage("데이터 전송 및 PDF 파일 생성 중...");
     setIsProcessing(true);
     try {
       await syncChecklistToCloud(serviceUrl, currentChecklists, selectedSheet);
-      
+
       const yyyy_mm_dd = getDate();
       const downloadName = currentChecklists.length === 1
-          ? `정비_체크리스트_${currentChecklists[0].mgmtNumber}_${yyyy_mm_dd}.pdf`
-          : `정비_체크리스트_${yyyy_mm_dd}.pdf`;
+        ? `정비_체크리스트_${currentChecklists[0].mgmtNumber}_${yyyy_mm_dd}.pdf`
+        : `정비_체크리스트_${yyyy_mm_dd}.pdf`;
       await downloadChecklistPDF("checklist-container", downloadName);
     } catch (err) {
       console.error(err);
@@ -169,7 +169,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl, s
           </h3>
           <textarea
             value={mgmtNumbersInput}
-            onChange={(e) => setMgmtNumbersInput(e.target.value)}
+            onChange={(e) => setMgmtNumbersInput(e.target.value && e.target.value.toUpperCase())}
             placeholder="예: 851BX198 900CX200"
             className="w-full border border-gray-200 rounded-xl px-4 py-3 h-32 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all font-mono text-sm"
           />
@@ -205,27 +205,27 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl, s
           <div className="mt-12 space-y-8 no-print">
             <div className="flex flex-col md:flex-row md:items-center justify-between sticky top-20 z-30 bg-white/80 backdrop-blur-md px-6 py-5 rounded-3xl border border-gray-200 shadow-xl gap-6">
               <div className="flex flex-col">
-                <h4 className="font-black text-gray-900 text-lg">조회 결과: {currentChecklists.length}건</h4> 
+                <h4 className="font-black text-gray-900 text-lg">조회 결과: {currentChecklists.length}건</h4>
               </div>
-              
+
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                <button 
-                  onClick={handleSaveOnly} 
+                <button
+                  onClick={handleSaveOnly}
                   disabled={isProcessing}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 disabled:bg-gray-400 transition-all active:scale-95 sm:min-w-[120px]"
                 >
                   <CloudUpload className="w-4 h-4" /> 저장
                 </button>
-                <button 
-                  onClick={handleExcelExport} 
+                <button
+                  onClick={handleExcelExport}
                   disabled={isProcessing}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-green-100 disabled:bg-gray-400 transition-all active:scale-95 sm:min-w-[140px]"
                 >
                   <Download className="w-4 h-4" /> 엑셀 다운로드
                 </button>
-                <button 
-                  onClick={handlePdfExport} 
-                  disabled={isProcessing} 
+                <button
+                  onClick={handlePdfExport}
+                  disabled={isProcessing}
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-red-100 disabled:bg-gray-400 transition-all active:scale-95 sm:min-w-[140px]"
                 >
                   <FileText className="w-4 h-4" /> PDF 다운로드
