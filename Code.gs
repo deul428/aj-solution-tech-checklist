@@ -4,14 +4,13 @@
  * 1. 마스터파일 조회
  * 2. 체크리스트 데이터 저장/업데이트 (Upsert)
  * 3. 자산 실사 결과 업데이트
- * 4. 위치 정보 옵션 조회 (자산위치_데이터 시트 참조)
+ * 4. 위치 정보 옵션 조회 (자산위치_데이터 시트 참조 - 계층형)
  */
 
 function doGet(e) {
   const action = e.parameter.action;
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // 1. 시트 목록 가져오기
   if (action === 'listSheets') {
     const sheets = ss.getSheets()
       .map(s => s.getName())
@@ -20,35 +19,48 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  // 2. 위치 옵션 가져오기 (자산위치_데이터 시트 참조)
+  // 계층형 위치 옵션 가져오기 (센터 -> 구역 매핑)
   if (action === 'getLocationOptions') {
     const sheet = ss.getSheetByName("자산위치_데이터");
-    if (!sheet) return ContentService.createTextOutput(JSON.stringify({ centers: [], zones: [] })).setMimeType(ContentService.MimeType.JSON);
+    if (!sheet) return ContentService.createTextOutput(JSON.stringify({})).setMimeType(ContentService.MimeType.JSON);
     
     const data = sheet.getDataRange().getValues();
-    if (data.length <= 1) return ContentService.createTextOutput(JSON.stringify({ centers: [], zones: [] })).setMimeType(ContentService.MimeType.JSON);
+    if (data.length <= 1) return ContentService.createTextOutput(JSON.stringify({})).setMimeType(ContentService.MimeType.JSON);
     
     const headers = data[0];
     const centerIdx = headers.indexOf("센터 구분");
     const zoneIdx = headers.indexOf("구역 구분");
     
-    let centers = [];
-    let zones = [];
+    if (centerIdx === -1 || zoneIdx === -1) {
+      return ContentService.createTextOutput(JSON.stringify({})).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    let mapping = {}; // { "센터명": ["구역1", "구역2"] }
     
     for (let i = 1; i < data.length; i++) {
-      if (centerIdx > -1 && data[i][centerIdx]) centers.push(String(data[i][centerIdx]).trim());
-      if (zoneIdx > -1 && data[i][zoneIdx]) zones.push(String(data[i][zoneIdx]).trim());
+      const center = String(data[i][centerIdx]).trim();
+      const zone = String(data[i][zoneIdx]).trim();
+      
+      if (!center) continue;
+      
+      if (!mapping[center]) {
+        mapping[center] = [];
+      }
+      
+      if (zone && !mapping[center].includes(zone)) {
+        mapping[center].push(zone);
+      }
     }
     
-    // 중복 제거 및 정렬
-    const uniqueCenters = [...new Set(centers)].sort();
-    const uniqueZones = [...new Set(zones)].sort();
+    // 구역 리스트 정렬
+    for (let center in mapping) {
+      mapping[center].sort();
+    }
     
-    return ContentService.createTextOutput(JSON.stringify({ centers: uniqueCenters, zones: uniqueZones }))
+    return ContentService.createTextOutput(JSON.stringify(mapping))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  // 3. 특정 시트 데이터 읽기
   const sheetName = e.parameter.sheetName || "마스터파일";
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);

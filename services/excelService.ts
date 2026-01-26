@@ -7,7 +7,7 @@ import { MasterDataRow, ChecklistData, CHECKLIST_COLUMNS, MASTER_COLUMNS } from 
 /**
  * 기본 구글 앱스 스크립트 배포 URL
  */
-export const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbw8TBjt8x5EY793BzLmvgr5niOy80payg4OyTOtBHj6unrwbxN1b6FFpxmkrTDlqds0/exec";
+export const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwybFpjOQC05mlrUF02C31eJFW5qhNPPSPF43DgUDn_9kgLpuvknQplI0BkGnVEMIP_/exec";
 
 /**
  * 시트 목록 조회
@@ -27,9 +27,9 @@ export const fetchSheetList = async (url: string): Promise<string[]> => {
 };
 
 /**
- * 위치 옵션(센터/구역) 조회
+ * 위치 옵션(센터 -> 구역 매핑) 조회
  */
-export const fetchLocationOptions = async (url: string): Promise<{ centers: string[], zones: string[] }> => {
+export const fetchLocationOptions = async (url: string): Promise<Record<string, string[]>> => {
   try {
     const separator = url.includes('?') ? '&' : '?';
     const fetchUrl = `${url}${separator}action=getLocationOptions&t=${Date.now()}`;
@@ -38,7 +38,7 @@ export const fetchLocationOptions = async (url: string): Promise<{ centers: stri
     return await response.json();
   } catch (error) {
     console.error("Error fetching location options:", error);
-    return { centers: [], zones: [] };
+    return {};
   }
 };
 
@@ -120,7 +120,6 @@ export const syncChecklistToCloud = async (url: string, data: ChecklistData[], _
 
 /**
  * 자산 실사 데이터 업데이트 (Upsert)
- * 센터 위치 및 자산 구역 정보를 포함하여 전송합니다.
  */
 export const syncAuditDataToCloud = async (
   url: string, 
@@ -138,8 +137,8 @@ export const syncAuditDataToCloud = async (
       [CHECKLIST_COLUMNS.MGMT_NO]: String(row[MASTER_COLUMNS.MGMT_NO] || row[CHECKLIST_COLUMNS.MGMT_NO] || "").trim(),
       [CHECKLIST_COLUMNS.AUDIT_DATE]: row[CHECKLIST_COLUMNS.AUDIT_DATE] || row['자산실사일'] || new Date().toLocaleDateString(),
       [CHECKLIST_COLUMNS.AUDIT_STATUS]: "O",
-      [CHECKLIST_COLUMNS.CENTER_LOC]: centerLocation || "", // '센터위치'
-      [CHECKLIST_COLUMNS.ASSET_LOC]: assetLocation || ""    // '자산위치'
+      [CHECKLIST_COLUMNS.CENTER_LOC]: centerLocation || "", 
+      [CHECKLIST_COLUMNS.ASSET_LOC]: assetLocation || ""    
     }))
   };
 
