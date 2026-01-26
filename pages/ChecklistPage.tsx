@@ -19,9 +19,10 @@ import LoadingOverlay from "../components/LoadingOverlay";
 interface ChecklistPageProps {
   masterData: MasterDataRow[];
   serviceUrl: string;
+  selectedSheet?: string;
 }
 
-const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl }) => {
+const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl, selectedSheet }) => {
   const [mgmtNumbersInput, setMgmtNumbersInput] = useState("");
   const [engineerInput, setEngineerInput] = useState("");
   const [currentChecklists, setCurrentChecklists] = useState<ChecklistData[]>([]);
@@ -94,7 +95,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl })
     setProcessingMessage("서버에 데이터를 등록 중입니다...");
     setIsProcessing(true);
     try {
-      await syncChecklistToCloud(serviceUrl, currentChecklists);
+      await syncChecklistToCloud(serviceUrl, currentChecklists, selectedSheet);
       alert(`${currentChecklists.length}건의 데이터가 성공적으로 서버에 저장되었습니다.`);
     } catch (err) {
       console.error(err);
@@ -110,7 +111,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl })
     setProcessingMessage("데이터 전송 및 엑셀 파일 생성 중...");
     setIsProcessing(true);
     try {
-      await syncChecklistToCloud(serviceUrl, currentChecklists);
+      await syncChecklistToCloud(serviceUrl, currentChecklists, selectedSheet);
       
       const yyyy_mm_dd = getDate();
       const downloadName = currentChecklists.length === 1
@@ -132,7 +133,7 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl })
     setProcessingMessage("데이터 전송 및 PDF 파일 생성 중...");
     setIsProcessing(true);
     try {
-      await syncChecklistToCloud(serviceUrl, currentChecklists);
+      await syncChecklistToCloud(serviceUrl, currentChecklists, selectedSheet);
       
       const yyyy_mm_dd = getDate();
       const downloadName = currentChecklists.length === 1
@@ -155,7 +156,10 @@ const ChecklistPage: React.FC<ChecklistPageProps> = ({ masterData, serviceUrl })
         <div className="bg-blue-600 p-2 rounded-lg text-white shadow-lg shadow-blue-100">
           <ListFilter className="w-6 h-6" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900">체크리스트 일괄 생성</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">체크리스트 일괄 생성</h2>
+          {selectedSheet && <p className="text-xs font-bold text-blue-500 mt-1">참조: {selectedSheet}</p>}
+        </div>
       </div>
 
       <div className="space-y-6">

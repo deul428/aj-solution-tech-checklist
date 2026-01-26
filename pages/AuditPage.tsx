@@ -24,9 +24,10 @@ interface AuditPageProps {
   masterData: MasterDataRow[];
   setMasterData: React.Dispatch<React.SetStateAction<MasterDataRow[]>>;
   serviceUrl: string;
+  selectedSheet?: string;
 }
 
-const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, serviceUrl }) => {
+const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, serviceUrl, selectedSheet }) => {
   const [scannedResult, setScannedResult] = useState<string | null>(null);
   const [foundRow, setFoundRow] = useState<MasterDataRow | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -162,7 +163,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
 
     setIsSyncing(true);
     try {
-      const result = await syncAuditDataToCloud(serviceUrl, masterData);
+      const result = await syncAuditDataToCloud(serviceUrl, masterData, selectedSheet);
       const now = new Date();
       setLastSyncTime(now.toLocaleTimeString());
 
@@ -190,6 +191,9 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
           <div>
             <h2 className="text-2xl font-black text-gray-900 leading-tight">현장 자산 실사</h2>
             <div className="flex items-center gap-3 mt-1">
+              <span className="text-[11px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
+                시트: {selectedSheet || "기본"}
+              </span>
               <a
                 href={SHARED_SHEET_URL}
                 target="_blank"

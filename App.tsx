@@ -13,7 +13,7 @@ import HomePage from "./pages/HomePage";
 import ChecklistPage from "./pages/ChecklistPage";
 import AuditPage from "./pages/AuditPage";
 import LoadingOverlay from "./components/LoadingOverlay";
-import { fetchMasterFromCloud, DEFAULT_GAS_URL } from "./services/excelService";
+import { fetchMasterFromCloud, fetchSheetList, DEFAULT_GAS_URL } from "./services/excelService";
 
 type ViewType = "home" | "checklist" | "audit";
 
@@ -25,25 +25,40 @@ const App: React.FC = () => {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [serviceUrl, setServiceUrl] = useState<string>(DEFAULT_GAS_URL);
+  
+  // Multiple Sheet Management
+  const [availableSheets, setAvailableSheets] = useState<string[]>([]);
+  const [selectedSheet, setSelectedSheet] = useState<string | null>(null);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
-  const loadData = async (customUrl?: string) => {
-    const targetUrl = customUrl || serviceUrl;
+  const loadData = async (customUrl?: string, targetSheet?: string) => {
+    const urlToUse = customUrl || serviceUrl;
     setIsInitialLoading(true);
+    
     try {
-      const data = await fetchMasterFromCloud(targetUrl);
+      // 1. Fetch sheet list if not already loaded or if URL changed
+      let sheets = availableSheets;
+      if (customUrl || availableSheets.length === 0) {
+        sheets = await fetchSheetList(urlToUse);
+        setAvailableSheets(sheets);
+      }
+
+      // 2. Decide which sheet to load
+      const sheetName = targetSheet || (sheets.length > 0 ? sheets[0] : undefined);
+      
+      // 3. Fetch data
+      const data = await fetchMasterFromCloud(urlToUse, sheetName);
       setMasterData(data);
-      setFileName("구글 클라우드 시트");
+      setSelectedSheet(sheetName || "기본 시트");
+      setFileName(`구글 클라우드 (${sheetName || "기본"})`);
       setLastSyncTime(new Date().toLocaleTimeString());
+      
       if (customUrl) setServiceUrl(customUrl);
     } catch (err) {
       console.error(err);
-      if (!customUrl) {
-         // 에러가 났을 때 마스터 데이터를 비워줌으로써 HomePage에서 에러 UI가 뜨게 유도
-         setMasterData([]);
-      }
-      throw err; // HomePage에서 잡을 수 있게 던짐
+      if (!customUrl) setMasterData([]);
+      throw err;
     } finally {
       setIsInitialLoading(false);
     }
@@ -52,6 +67,10 @@ const App: React.FC = () => {
   useEffect(() => {
     loadData().catch(() => {});
   }, []);
+
+  const handleSheetSwitch = (sheetName: string) => {
+    loadData(serviceUrl, sheetName).catch(() => alert("시트 데이터를 불러오지 못했습니다."));
+  };
 
   const renderView = () => {
     switch (currentView) {
@@ -66,14 +85,17 @@ const App: React.FC = () => {
             onRefresh={loadData}
             lastSyncTime={lastSyncTime}
             serviceUrl={serviceUrl}
+            availableSheets={availableSheets}
+            selectedSheet={selectedSheet}
+            onSheetSwitch={handleSheetSwitch}
           />
         );
       case "checklist":
-        return <ChecklistPage masterData={masterData} serviceUrl={serviceUrl} />;
+        return <ChecklistPage masterData={masterData} serviceUrl={serviceUrl} selectedSheet={selectedSheet || undefined} />;
       case "audit":
-        return <AuditPage masterData={masterData} setMasterData={setMasterData} serviceUrl={serviceUrl} />;
+        return <AuditPage masterData={masterData} setMasterData={setMasterData} serviceUrl={serviceUrl} selectedSheet={selectedSheet || undefined} />;
       default:
-        return <HomePage masterData={masterData} setMasterData={setMasterData} fileName={fileName} setFileName={setFileName} onNavigate={(view) => setCurrentView(view)} onRefresh={loadData} lastSyncTime={lastSyncTime} serviceUrl={serviceUrl} />;
+        return <HomePage masterData={masterData} setMasterData={setMasterData} fileName={fileName} setFileName={setFileName} onNavigate={(view) => setCurrentView(view)} onRefresh={loadData} lastSyncTime={lastSyncTime} serviceUrl={serviceUrl} availableSheets={availableSheets} selectedSheet={selectedSheet} onSheetSwitch={handleSheetSwitch} />;
     }
   };
 

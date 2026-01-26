@@ -14,7 +14,10 @@ import {
   ExternalLink,
   Link2,
   Info,
-  ChevronRight
+  ChevronRight,
+  Layers,
+  HelpCircle,
+  Key
 } from "lucide-react";
 import { MasterDataRow } from "../types";
 import { parseMasterExcel } from "../services/excelService";
@@ -26,9 +29,12 @@ interface HomePageProps {
   fileName: string | null;
   setFileName: React.Dispatch<React.SetStateAction<string | null>>;
   onNavigate: (view: "checklist" | "audit") => void;
-  onRefresh: (customUrl?: string) => Promise<void>;
+  onRefresh: (customUrl?: string, sheetName?: string) => Promise<void>;
   lastSyncTime: string | null;
   serviceUrl: string;
+  availableSheets: string[];
+  selectedSheet: string | null;
+  onSheetSwitch: (sheetName: string) => void;
 }
 
 const HomePage: React.FC<HomePageProps> = ({ 
@@ -39,11 +45,16 @@ const HomePage: React.FC<HomePageProps> = ({
   onNavigate,
   onRefresh,
   lastSyncTime,
-  serviceUrl
+  serviceUrl,
+  availableSheets,
+  selectedSheet,
+  onSheetSwitch
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [tempUrl, setTempUrl] = useState(serviceUrl);
+  const [showTroubleshoot, setShowTroubleshoot] = useState(false);
+  
   const SHARED_SHEET_URL = "https://docs.google.com/spreadsheets/d/1NXT2EBow1zWxmPsb7frN90e95qRH1mkY9DQUgCrsn2I/edit?usp=sharing";
 
   const handleManualUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,9 +78,11 @@ const HomePage: React.FC<HomePageProps> = ({
   const handleRefresh = async () => {
     setIsProcessing(true);
     try {
-      await onRefresh();
+      await onRefresh(serviceUrl, selectedSheet || undefined);
     } catch (err) {
-      alert("클라우드 연결에 실패했습니다. (Failed to fetch)\n\nGAS 배포 설정이 '모든 사용자(Anyone)'로 되어 있는지 확인하세요.");
+      console.error("Refresh failed:", err);
+      alert("클라우드 연결에 실패했습니다. (Failed to fetch)\n\n하단의 '해결 방법'을 확인해 보세요.");
+      setShowTroubleshoot(true);
     } finally {
       setIsProcessing(false);
     }
@@ -89,8 +102,11 @@ const HomePage: React.FC<HomePageProps> = ({
     try {
       await onRefresh(tempUrl);
       alert("클라우드 데이터베이스 연결에 성공했습니다.");
+      setShowTroubleshoot(false);
     } catch (err) {
+      console.error("Connection failed:", err);
       alert("연결에 실패했습니다. URL을 다시 확인하거나 GAS 설정을 확인하세요.");
+      setShowTroubleshoot(true);
     } finally {
       setIsProcessing(false);
     }
@@ -125,20 +141,46 @@ const HomePage: React.FC<HomePageProps> = ({
 
           <div className="flex-1 flex flex-col justify-center">
             {masterData.length > 0 ? (
-              <div className="bg-blue-50/50 rounded-3xl p-8 border border-blue-100 relative overflow-hidden group">
+              <div className="bg-blue-50/50 rounded-3xl p-6 border border-blue-100 relative overflow-hidden group">
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-100/30 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
                 
-                <div className="flex items-center gap-4 mb-6">
+                {/* Multi-Sheet Tab List */}
+                {availableSheets.length > 0 && (
+                  <div className="mb-6 relative z-10">
+                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                      <Layers className="w-3 h-3" /> 사용 가능한 마스터 시트
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {availableSheets.map((name) => (
+                        <button
+                          key={name}
+                          onClick={() => onSheetSwitch(name)}
+                          className={`px-3 py-1.5 rounded-full text-[11px] font-black transition-all ${
+                            selectedSheet === name 
+                            ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
+                            : "bg-white text-gray-500 hover:bg-gray-100 border border-blue-100"
+                          }`}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-4 mb-6 relative z-10">
                   <div className="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-200">
                     <Cloud className="w-8 h-8 text-white" />
                   </div>
                   <div>
-                    <h4 className="text-blue-900 font-black text-xl leading-none mb-1">클라우드 연결됨</h4>
-                    <p className="text-blue-600 text-[11px] font-bold uppercase tracking-widest">Master DB Sync Active</p>
+                    <h4 className="text-blue-900 font-black text-lg leading-tight mb-1">
+                      {selectedSheet || "연결됨"}
+                    </h4>
+                    <p className="text-blue-600 text-[10px] font-bold uppercase tracking-widest">Active Database</p>
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-4 relative z-10">
                   <div className="flex justify-between items-end border-b border-blue-100 pb-3">
                     <span className="text-gray-500 text-sm font-bold">마스터 데이터 수</span>
                     <span className="text-2xl font-black text-gray-900">{masterData.length.toLocaleString()} <small className="text-sm font-bold text-gray-400">건</small></span>
@@ -153,7 +195,7 @@ const HomePage: React.FC<HomePageProps> = ({
                   href={SHARED_SHEET_URL} 
                   target="_blank" 
                   rel="noreferrer"
-                  className="mt-8 w-full bg-white text-gray-700 font-black py-4 rounded-2xl border border-blue-100 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
+                  className="mt-8 w-full bg-white text-gray-700 font-black py-4 rounded-2xl border border-blue-100 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2 text-sm shadow-sm relative z-10"
                 >
                   <ExternalLink className="w-4 h-4" /> 구글 스프레드시트 열기
                 </a>
@@ -163,14 +205,14 @@ const HomePage: React.FC<HomePageProps> = ({
                 <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
                 <h4 className="text-red-900 font-black text-lg mb-1">클라우드 연결 실패</h4>
                 <p className="text-red-600 text-[11px] font-medium leading-relaxed mb-6">
-                  마스터 데이터를 가져오지 못했습니다.<br/>아래 두 가지 방법 중 하나로 해결하세요.
+                  마스터 데이터를 가져오지 못했습니다. (Failed to fetch)<br/>아래 설정을 확인해 보세요.
                 </p>
                 
                 <div className="space-y-4 text-left">
                   {/* Option 1: URL Input */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-red-400 uppercase ml-1 flex items-center gap-1">
-                      <Link2 className="w-3 h-3" /> 방법 1: 서비스 URL 재연결
+                      <Link2 className="w-3 h-3" /> 앱스 스크립트 배포 URL
                     </label>
                     <div className="flex gap-2">
                       <input 
@@ -187,11 +229,28 @@ const HomePage: React.FC<HomePageProps> = ({
                         연결
                       </button>
                     </div>
-                    <p className="text-[9px] text-gray-400 flex items-start gap-1 px-1">
-                      <Info className="w-3 h-3 flex-shrink-0 mt-0.5" /> 
-                      <span>반드시 GAS 웹 앱 URL이어야 하며, 시트 명칭이 <b>'마스터파일'</b>이어야 합니다.</span>
-                    </p>
                   </div>
+
+                  <button 
+                    onClick={() => setShowTroubleshoot(!showTroubleshoot)}
+                    className="w-full flex items-center justify-center gap-2 text-[11px] font-black text-blue-600 hover:underline"
+                  >
+                    <HelpCircle className="w-3 h-3" /> {showTroubleshoot ? "가이드 닫기" : "GAS 권한 설정 해결 방법"}
+                  </button>
+
+                  {showTroubleshoot && (
+                    <div className="bg-white/50 p-4 rounded-2xl border border-red-100 text-[10px] space-y-2 animate-in slide-in-from-top-2">
+                      <p className="font-black text-red-700 flex items-center gap-1">
+                        <Key className="w-3 h-3" /> 반드시 확인하세요!
+                      </p>
+                      <ul className="list-decimal list-inside space-y-1 text-gray-600 font-medium">
+                        <li><b>배포 > 새 배포</b>를 클릭합니다.</li>
+                        <li>유형은 <b>'웹 앱'</b>이어야 합니다.</li>
+                        <li>액세스 권한은 <b>'모든 사용자(Anyone)'</b>로 설정해야 합니다.</li>
+                        <li>스크립트 내 시트 이름이 <b>'마스터파일'</b>을 포함해야 합니다.</li>
+                      </ul>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-px bg-red-100"></div>

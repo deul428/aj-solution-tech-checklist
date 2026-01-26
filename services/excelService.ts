@@ -5,17 +5,50 @@ import QRCode from "qrcode";
 import { MasterDataRow, ChecklistData, AUDIT_COLUMNS, MASTER_COLUMNS } from "../types";
 
 /**
- * 기본 구글 앱스 스크립트 배포 URL (App.tsx에서 관리됨)
+ * 기본 구글 앱스 스크립트 배포 URL
  */
-export const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbyZEb3wiuekGvFaGaDZZ7di3dXi8eCLzumIKGZbZS064XYLk0BPVpC56nbdcLnARjyY-Q/exec";
+export const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycby_0hhvIVYCXn1Rd-jiJSuCM6D_xWcSMOdO5-AqvK3it4KGiE-EkkMuu5daDDwULag/exec";
 
 /**
- * Fetches master data from Google Sheets via dynamic GAS URL.
+ * Fetches the list of sheet names containing '마스터파일'
  */
-export const fetchMasterFromCloud = async (url: string): Promise<MasterDataRow[]> => {
+export const fetchSheetList = async (url: string): Promise<string[]> => {
   try {
-    const response = await fetch(`${url}?action=read`);
-    if (!response.ok) throw new Error("Cloud fetch failed");
+    // Add cache-busting timestamp
+    const separator = url.includes('?') ? '&' : '?';
+    const fetchUrl = `${url}${separator}action=listSheets&t=${Date.now()}`;
+    
+    console.log("Fetching sheet list from:", fetchUrl);
+    
+    const response = await fetch(fetchUrl);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    
+    const sheets = await response.json();
+    const filteredSheets = Array.isArray(sheets) 
+      ? sheets.filter(name => name.includes('마스터파일')) 
+      : [];
+      
+    console.log("Found sheets:", filteredSheets);
+    return filteredSheets;
+  } catch (error) {
+    console.error("Error fetching sheet list:", error);
+    throw error; // Let the caller handle it
+  }
+};
+
+/**
+ * Fetches master data from a specific sheet via GAS URL.
+ */
+export const fetchMasterFromCloud = async (url: string, sheetName?: string): Promise<MasterDataRow[]> => {
+  try {
+    const separator = url.includes('?') ? '&' : '?';
+    const sheetParam = sheetName ? `&sheetName=${encodeURIComponent(sheetName)}` : "";
+    const fetchUrl = `${url}${separator}action=read${sheetParam}&t=${Date.now()}`;
+    
+    console.log("Fetching master data from:", fetchUrl);
+    
+    const response = await fetch(fetchUrl);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     
     const data = await response.json();
     return data as MasterDataRow[];
@@ -51,23 +84,26 @@ export const parseMasterExcel = (file: File): Promise<MasterDataRow[]> => {
 /**
  * Sends initial checklist data to Google Sheets.
  */
-export const syncChecklistToCloud = async (url: string, data: ChecklistData[]): Promise<{ success: boolean; count: number }> => {
+export const syncChecklistToCloud = async (url: string, data: ChecklistData[], sheetName?: string): Promise<{ success: boolean; count: number }> => {
   if (data.length === 0) return { success: false, count: 0 };
 
-  const payload = data.map((item) => ({
-    "관리번호": String(item.mgmtNumber || "").trim(),
-    "자산번호": String(item.assetNumber || "").trim(),
-    "상품코드": String(item.productCode || "").trim(),
-    "상품명": String(item.productName || "").trim(),
-    "제조사": String(item.manufacturer || "").trim(),
-    "모델": String(item.model || "").trim(),
-    "년식": String(item.year || "").trim(),
-    "차량번호": String(item.vehicleNumber || "").trim(),
-    "차대번호": String(item.serialNumber || "").trim(),
-    "자산실사일": "", 
-    "자산실사 여부": "",
-    "QR": "" 
-  }));
+  const payload = {
+    sheetName: sheetName || "마스터파일",
+    rows: data.map((item) => ({
+      "관리번호": String(item.mgmtNumber || "").trim(),
+      "자산번호": String(item.assetNumber || "").trim(),
+      "상품코드": String(item.productCode || "").trim(),
+      "상품명": String(item.productName || "").trim(),
+      "제조사": String(item.manufacturer || "").trim(),
+      "모델": String(item.model || "").trim(),
+      "년식": String(item.year || "").trim(),
+      "차량번호": String(item.vehicleNumber || "").trim(),
+      "차대번호": String(item.serialNumber || "").trim(),
+      "자산실사일": "", 
+      "자산실사 여부": "",
+      "QR": "" 
+    }))
+  };
 
   try {
     await fetch(url, {
@@ -76,7 +112,7 @@ export const syncChecklistToCloud = async (url: string, data: ChecklistData[]): 
       headers: { "Content-Type": "text/plain" },
       body: JSON.stringify(payload),
     });
-    return { success: true, count: payload.length };
+    return { success: true, count: payload.rows.length };
   } catch (error) {
     console.error("Checklist Sync error:", error);
     throw error;
@@ -86,25 +122,28 @@ export const syncChecklistToCloud = async (url: string, data: ChecklistData[]): 
 /**
  * Sends audited data to Google Sheets.
  */
-export const syncAuditDataToCloud = async (url: string, data: MasterDataRow[]): Promise<{ success: boolean; count: number }> => {
+export const syncAuditDataToCloud = async (url: string, data: MasterDataRow[], sheetName?: string): Promise<{ success: boolean; count: number }> => {
   const auditedItems = data.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
   
   if (auditedItems.length === 0) return { success: false, count: 0 };
 
-  const payload = auditedItems.map((row) => ({
-    "관리번호": String(row[MASTER_COLUMNS.MGMT_NO] || "").trim(),
-    "자산번호": String(row[MASTER_COLUMNS.ASSET_NO] || "").trim(),
-    "상품코드": String(row[MASTER_COLUMNS.PROD_NO] || "").trim(),
-    "상품명": String(row[MASTER_COLUMNS.PROD_NAME] || "").trim(),
-    "제조사": String(row[MASTER_COLUMNS.MANUFACTURER] || "").trim(),
-    "모델": String(row[MASTER_COLUMNS.MODEL_NAME] || "").trim(),
-    "년식": String(row[MASTER_COLUMNS.PROD_YEAR] || "").trim(),
-    "차량번호": String(row[MASTER_COLUMNS.VEHICLE_NO] || "").trim(),
-    "차대번호": String(row[MASTER_COLUMNS.SERIAL_NO] || "").trim(),
-    "자산실사일": row[AUDIT_COLUMNS.DATE] || new Date().toLocaleDateString(),
-    "자산실사 여부": "O",
-    "QR": "" 
-  }));
+  const payload = {
+    sheetName: sheetName || "마스터파일",
+    rows: auditedItems.map((row) => ({
+      "관리번호": String(row[MASTER_COLUMNS.MGMT_NO] || "").trim(),
+      "자산번호": String(row[MASTER_COLUMNS.ASSET_NO] || "").trim(),
+      "상품코드": String(row[MASTER_COLUMNS.PROD_NO] || "").trim(),
+      "상품명": String(row[MASTER_COLUMNS.PROD_NAME] || "").trim(),
+      "제조사": String(row[MASTER_COLUMNS.MANUFACTURER] || "").trim(),
+      "모델": String(row[MASTER_COLUMNS.MODEL_NAME] || "").trim(),
+      "년식": String(row[MASTER_COLUMNS.PROD_YEAR] || "").trim(),
+      "차량번호": String(row[MASTER_COLUMNS.VEHICLE_NO] || "").trim(),
+      "차대번호": String(row[MASTER_COLUMNS.SERIAL_NO] || "").trim(),
+      "자산실사일": row[AUDIT_COLUMNS.DATE] || new Date().toLocaleDateString(),
+      "자산실사 여부": "O",
+      "QR": "" 
+    }))
+  };
 
   try {
     await fetch(url, {
@@ -113,7 +152,7 @@ export const syncAuditDataToCloud = async (url: string, data: MasterDataRow[]): 
       headers: { "Content-Type": "text/plain" },
       body: JSON.stringify(payload),
     });
-    return { success: true, count: payload.length };
+    return { success: true, count: payload.rows.length };
   } catch (error) {
     console.error("Audit Sync error:", error);
     throw error;
