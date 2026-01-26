@@ -7,7 +7,7 @@ import { MasterDataRow, ChecklistData, CHECKLIST_COLUMNS, MASTER_COLUMNS } from 
 /**
  * 기본 구글 앱스 스크립트 배포 URL
  */
-export const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwZOiqOG0rygHacs7h9NQwJCKAnhWApBFLcOWNjnFi7ImItZV4MSJ9EaVORbOV_3gOr/exec";
+export const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwybFpjOQC05mlrUF02C31eJFW5qhNPPSPF43DgUDn_9kgLpuvknQplI0BkGnVEMIP_/exec";
 
 /**
  * 시트 목록 조회
@@ -66,45 +66,25 @@ export const parseMasterExcel = (file: File): Promise<MasterDataRow[]> => {
 };
 
 /**
- * 체크리스트 생성 시 '체크리스트_데이터' 시트에 새로운 행 추가 (QR 실제 이미지 포함)
+ * 체크리스트 생성/업데이트 (Upsert)
  */
 export const syncChecklistToCloud = async (url: string, data: ChecklistData[], _unused?: string): Promise<{ success: boolean; count: number }> => {
   if (data.length === 0) return { success: false, count: 0 };
 
-  const rows = await Promise.all(data.map(async (item) => {
-    let qrBase64 = "";
-    try {
-      // 구글 시트 셀 크기에 맞게 200px 정도로 생성
-      qrBase64 = await QRCode.toDataURL(item.mgmtNumber, { 
-        margin: 1, 
-        width: 200,
-        errorCorrectionLevel: 'M' 
-      });
-    } catch (err) {
-      console.error("QR Generation failed for sync:", err);
-    }
-
-    return {
-      [CHECKLIST_COLUMNS.MGMT_NO]: String(item.mgmtNumber || "").trim(),
-      [CHECKLIST_COLUMNS.ASSET_NO]: String(item.assetNumber || "").trim(),
-      [CHECKLIST_COLUMNS.PROD_CODE]: String(item.productCode || "").trim(),
-      [CHECKLIST_COLUMNS.PROD_NAME]: String(item.productName || "").trim(),
-      [CHECKLIST_COLUMNS.MANUFACTURER]: String(item.manufacturer || "").trim(),
-      [CHECKLIST_COLUMNS.MODEL]: String(item.model || "").trim(),
-      [CHECKLIST_COLUMNS.YEAR]: String(item.year || "").trim(),
-      [CHECKLIST_COLUMNS.VEHICLE_NO]: String(item.vehicleNumber || "").trim(),
-      [CHECKLIST_COLUMNS.SERIAL_NO]: String(item.serialNumber || "").trim(),
-      [CHECKLIST_COLUMNS.AUDIT_DATE]: "", 
-      [CHECKLIST_COLUMNS.AUDIT_STATUS]: "",
-      [CHECKLIST_COLUMNS.QR]: qrBase64, 
-      [CHECKLIST_COLUMNS.CENTER_LOC]: "",
-      [CHECKLIST_COLUMNS.ASSET_LOC]: ""
-    };
+  const rows = data.map((item) => ({
+    [CHECKLIST_COLUMNS.MGMT_NO]: String(item.mgmtNumber || "").trim(),
+    [CHECKLIST_COLUMNS.ASSET_NO]: String(item.assetNumber || "").trim(),
+    [CHECKLIST_COLUMNS.PROD_CODE]: String(item.productCode || "").trim(),
+    [CHECKLIST_COLUMNS.PROD_NAME]: String(item.productName || "").trim(),
+    [CHECKLIST_COLUMNS.MANUFACTURER]: String(item.manufacturer || "").trim(),
+    [CHECKLIST_COLUMNS.MODEL]: String(item.model || "").trim(),
+    [CHECKLIST_COLUMNS.YEAR]: String(item.year || "").trim(),
+    [CHECKLIST_COLUMNS.VEHICLE_NO]: String(item.vehicleNumber || "").trim(),
+    [CHECKLIST_COLUMNS.SERIAL_NO]: String(item.serialNumber || "").trim(),
   }));
 
   const payload = {
     action: "checklist",
-    sheetName: "체크리스트_데이터", 
     rows: rows
   };
 
@@ -123,7 +103,8 @@ export const syncChecklistToCloud = async (url: string, data: ChecklistData[], _
 };
 
 /**
- * 자산 실사 시 '체크리스트_데이터' 시트의 기존 행을 찾아 정보 업데이트
+ * 자산 실사 데이터 업데이트 (Upsert)
+ * 센터 위치 및 자산 구역 정보를 포함하여 전송합니다.
  */
 export const syncAuditDataToCloud = async (
   url: string, 
@@ -137,13 +118,12 @@ export const syncAuditDataToCloud = async (
 
   const payload = {
     action: "audit", 
-    sheetName: "체크리스트_데이터",
     rows: auditedItems.map((row) => ({
       [CHECKLIST_COLUMNS.MGMT_NO]: String(row[MASTER_COLUMNS.MGMT_NO] || row[CHECKLIST_COLUMNS.MGMT_NO] || "").trim(),
       [CHECKLIST_COLUMNS.AUDIT_DATE]: row[CHECKLIST_COLUMNS.AUDIT_DATE] || row['자산실사일'] || new Date().toLocaleDateString(),
       [CHECKLIST_COLUMNS.AUDIT_STATUS]: "O",
-      [CHECKLIST_COLUMNS.CENTER_LOC]: centerLocation || "",
-      [CHECKLIST_COLUMNS.ASSET_LOC]: assetLocation || ""
+      [CHECKLIST_COLUMNS.CENTER_LOC]: centerLocation || "", // '자산실사 결과 센터위치'
+      [CHECKLIST_COLUMNS.ASSET_LOC]: assetLocation || ""    // '자산실사 결과 자산위치'
     }))
   };
 
@@ -161,9 +141,6 @@ export const syncAuditDataToCloud = async (
   }
 };
 
-/**
- * 엑셀 내보내기 로직
- */
 export const exportMasterWithImages = async (data: MasterDataRow[], fileName: string = "master_with_qr.xlsx") => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Asset List");
