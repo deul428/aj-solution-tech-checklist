@@ -3,8 +3,8 @@ export interface MasterDataRow {
   [key: string]: any;
   '자산실사일'?: string;
   '자산실사 여부'?: string;
-  '자산실사 결과 센터위치'?: string;
-  '자산실사 결과 자산위치'?: string;
+  '센터위치'?: string;
+  '자산위치'?: string;
 }
 
 export interface ChecklistData {
@@ -54,8 +54,8 @@ export const CHECKLIST_COLUMNS = {
   AUDIT_DATE: '자산실사일',
   AUDIT_STATUS: '자산실사 여부',
   QR: 'QR',
-  CENTER_LOC: '자산실사 결과 센터위치',
-  ASSET_LOC: '자산실사 결과 자산위치'
+  CENTER_LOC: '센터위치',
+  ASSET_LOC: '자산위치'
 };
 
 /**
@@ -64,6 +64,6 @@ export const CHECKLIST_COLUMNS = {
 export const AUDIT_COLUMNS = {
   STATUS: '자산실사 여부',
   DATE: '자산실사일',
-  CENTER: '자산실사 결과 센터위치',
-  ZONE: '자산실사 결과 자산위치'
+  CENTER: '센터위치',
+  ZONE: '자산위치'
 };

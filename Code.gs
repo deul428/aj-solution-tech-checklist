@@ -4,12 +4,14 @@
  * 1. 마스터파일 조회
  * 2. 체크리스트 데이터 저장/업데이트 (Upsert)
  * 3. 자산 실사 결과 업데이트
+ * 4. 위치 정보 옵션 조회 (자산위치_데이터 시트 참조)
  */
 
 function doGet(e) {
   const action = e.parameter.action;
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
+  // 1. 시트 목록 가져오기
   if (action === 'listSheets') {
     const sheets = ss.getSheets()
       .map(s => s.getName())
@@ -18,6 +20,35 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
+  // 2. 위치 옵션 가져오기 (자산위치_데이터 시트 참조)
+  if (action === 'getLocationOptions') {
+    const sheet = ss.getSheetByName("자산위치_데이터");
+    if (!sheet) return ContentService.createTextOutput(JSON.stringify({ centers: [], zones: [] })).setMimeType(ContentService.MimeType.JSON);
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return ContentService.createTextOutput(JSON.stringify({ centers: [], zones: [] })).setMimeType(ContentService.MimeType.JSON);
+    
+    const headers = data[0];
+    const centerIdx = headers.indexOf("센터 구분");
+    const zoneIdx = headers.indexOf("구역 구분");
+    
+    let centers = [];
+    let zones = [];
+    
+    for (let i = 1; i < data.length; i++) {
+      if (centerIdx > -1 && data[i][centerIdx]) centers.push(String(data[i][centerIdx]).trim());
+      if (zoneIdx > -1 && data[i][zoneIdx]) zones.push(String(data[i][zoneIdx]).trim());
+    }
+    
+    // 중복 제거 및 정렬
+    const uniqueCenters = [...new Set(centers)].sort();
+    const uniqueZones = [...new Set(zones)].sort();
+    
+    return ContentService.createTextOutput(JSON.stringify({ centers: uniqueCenters, zones: uniqueZones }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 3. 특정 시트 데이터 읽기
   const sheetName = e.parameter.sheetName || "마스터파일";
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
@@ -26,15 +57,15 @@ function doGet(e) {
   if (rows.length <= 1) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
 
   const headers = rows[0];
-  const data = [];
+  const resultData = [];
   for (var i = 1; i < rows.length; i++) {
     var rowData = {};
     for (var j = 0; j < headers.length; j++) {
       rowData[headers[j]] = rows[i][j];
     }
-    data.push(rowData);
+    resultData.push(rowData);
   }
-  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify(resultData)).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
@@ -47,11 +78,10 @@ function doPost(e) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName(sheetName);
     
-    // 헤더 정의 (사용자 요청 컬럼 포함)
     const targetHeaders = [
       "관리번호", "자산번호", "상품코드", "상품명", "제조사", "모델", "년식", 
       "차량번호", "차대번호", "자산실사일", "자산실사 여부", "QR", 
-      "자산실사 결과 센터위치", "자산실사 결과 자산위치"
+      "센터위치", "자산위치"
     ];
 
     if (!sheet) {
@@ -69,7 +99,6 @@ function doPost(e) {
       const targetMgmtNo = cleanValue(item["관리번호"]);
       if (!targetMgmtNo) return;
 
-      // 1. 기존 행 존재 여부 확인 (중복 체크)
       let foundRowIndex = -1;
       const lastRow = sheet.getLastRow();
       if (lastRow > 1) {
@@ -83,16 +112,13 @@ function doPost(e) {
       }
 
       if (foundRowIndex > -1) {
-        // [업데이트] 관리번호가 존재하면 해당 행의 모든 필드를 갱신
         headers.forEach(function(h, idx) {
-          if (h === "QR") return; // QR 수식은 보존
-          // payload에 해당 헤더의 값이 존재할 때만 업데이트
+          if (h === "QR") return;
           if (item[h] !== undefined && item[h] !== null) {
             sheet.getRange(foundRowIndex, idx + 1).setValue(item[h]);
           }
         });
       } else {
-        // [신규 삽입] 관리번호가 없으면 새로운 행 추가
         const newRow = headers.map(function(h) {
           if (h === "QR") return ""; 
           return item[h] || "";
@@ -101,7 +127,6 @@ function doPost(e) {
         const currentRowIdx = sheet.getLastRow();
         sheet.setRowHeight(currentRowIdx, 80);
 
-        // QR 셀에 IMAGE 함수 수식 적용
         if (qrColIdx > -1) {
           const qrCell = sheet.getRange(currentRowIdx, qrColIdx + 1);
           const qrFormula = '=IMAGE("https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(targetMgmtNo) + '")';

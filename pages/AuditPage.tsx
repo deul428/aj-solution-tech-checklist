@@ -19,11 +19,10 @@ import {
   Navigation,
   Send,
   Plus,
-  // Fix: changed 'Buildings' to 'Building' to resolve lucide-react export error
   Building
 } from "lucide-react";
 import { MasterDataRow, MASTER_COLUMNS, AUDIT_COLUMNS } from "../types";
-import { syncAuditDataToCloud } from "../services/excelService";
+import { syncAuditDataToCloud, fetchLocationOptions } from "../services/excelService";
 
 interface AuditPageProps {
   masterData: MasterDataRow[];
@@ -44,30 +43,31 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
-  // Location selection states
+  // Dynamic location selection states
+  const [locationOptions, setLocationOptions] = useState<{ centers: string[], zones: string[] }>({ centers: [], zones: [] });
   const [selectedCenter, setSelectedCenter] = useState("");
   const [selectedZone, setSelectedZone] = useState("");
   const [isCustomCenter, setIsCustomCenter] = useState(false);
+  const [isCustomZone, setIsCustomZone] = useState(false);
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const scannerId = "qr-reader-container";
   const SHARED_SHEET_URL = "https://docs.google.com/spreadsheets/d/1NXT2EBow1zWxmPsb7frN90e95qRH1mkY9DQUgCrsn2I/edit?usp=sharing";
 
-  // 주요 센터 목록
-  const CENTER_OPTIONS = [
-    { value: "AJ_인천_메인_센터", label: "AJ 인천 메인 센터" },
-    { value: "AJ_시흥_물류_센터", label: "AJ 시흥 물류 센터" },
-    { value: "AJ_이천_건설_센터", label: "AJ 이천 건설 센터" },
-    { value: "AJ_수도권_거점", label: "AJ 수도권 거점" },
-    { value: "AJ_충청_대전_센터", label: "AJ 충청 대전 센터" },
-    { value: "AJ_영남_부산_센터", label: "AJ 영남 부산 센터" },
-    { value: "AJ_호남_광주_센터", label: "AJ 호남 광주 센터" },
-  ];
-
   useEffect(() => {
+    // 실사 내역 필터링
     const audited = masterData.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
     setAuditHistory([...audited].reverse());
   }, [masterData]);
+
+  useEffect(() => {
+    // 서버에서 위치 옵션 불러오기
+    const loadOptions = async () => {
+      const options = await fetchLocationOptions(serviceUrl);
+      setLocationOptions(options);
+    };
+    loadOptions();
+  }, [serviceUrl]);
 
   const startScanner = async () => {
     setCameraStatus('loading');
@@ -235,6 +235,17 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
     } else {
       setIsCustomCenter(false);
       setSelectedCenter(val);
+    }
+  };
+
+  const handleZoneSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === "custom") {
+      setIsCustomZone(true);
+      setSelectedZone("");
+    } else {
+      setIsCustomZone(false);
+      setSelectedZone(val);
     }
   };
 
@@ -474,7 +485,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                 {/* 센터 위치 선택 */}
                 <div className="space-y-2">
                   <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1">
-                    {/* Fix: changed 'Buildings' to 'Building' to resolve lucide-react export error */}
                     <Building className="w-3 h-3 text-blue-500" /> 센터 정보
                   </label>
                   {!isCustomCenter ? (
@@ -485,8 +495,8 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                         className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 font-black text-gray-900 outline-none focus:ring-4 focus:ring-blue-100 transition-all appearance-none cursor-pointer"
                       >
                         <option value="">센터를 선택하세요</option>
-                        {CENTER_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        {locationOptions.centers.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
                         ))}
                         <option value="custom">+ 직접 입력하기</option>
                       </select>
@@ -514,18 +524,46 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                   )}
                 </div>
 
-                {/* 구역 위치 입력 */}
+                {/* 구역 위치 선택 */}
                 <div className="space-y-2">
                   <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1">
                     <Navigation className="w-3 h-3 text-purple-500" /> 세부 구역 정보
                   </label>
-                  <input 
-                    type="text"
-                    value={selectedZone}
-                    onChange={(e) => setSelectedZone(e.target.value)}
-                    placeholder="예: A-1 구역, 상차 대기장 등"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 font-black text-gray-900 outline-none focus:ring-4 focus:ring-purple-100 transition-all"
-                  />
+                  {!isCustomZone ? (
+                    <div className="relative group">
+                      <select 
+                        value={selectedZone}
+                        onChange={handleZoneSelect}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 font-black text-gray-900 outline-none focus:ring-4 focus:ring-purple-100 transition-all appearance-none cursor-pointer"
+                      >
+                        <option value="">구역을 선택하세요</option>
+                        {locationOptions.zones.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                        <option value="custom">+ 직접 입력하기</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none text-gray-400">
+                        <Plus className="w-4 h-4" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 animate-in slide-in-from-right-2">
+                      <input 
+                        type="text"
+                        autoFocus
+                        value={selectedZone}
+                        onChange={(e) => setSelectedZone(e.target.value)}
+                        placeholder="직접 입력 (예: A-1 구역)"
+                        className="flex-1 bg-white border-2 border-purple-200 rounded-2xl px-5 py-4 font-black text-gray-900 outline-none shadow-lg shadow-purple-50"
+                      />
+                      <button 
+                        onClick={() => { setIsCustomZone(false); setSelectedZone(""); }}
+                        className="p-4 bg-gray-100 text-gray-500 rounded-2xl hover:bg-gray-200"
+                      >
+                        <RefreshCcw className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
