@@ -15,7 +15,10 @@ import {
   ExternalLink,
   RefreshCcw,
   Camera,
-  TestTube
+  MapPin,
+  Navigation,
+  Send,
+  Plus
 } from "lucide-react";
 import { MasterDataRow, MASTER_COLUMNS, AUDIT_COLUMNS } from "../types";
 import { syncAuditDataToCloud } from "../services/excelService";
@@ -30,13 +33,19 @@ interface AuditPageProps {
 const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, serviceUrl, selectedSheet }) => {
   const [scannedResult, setScannedResult] = useState<string | null>(null);
   const [foundRow, setFoundRow] = useState<MasterDataRow | null>(null);
-  const [showModal, setShowModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
   const [auditHistory, setAuditHistory] = useState<MasterDataRow[]>([]);
   const [cameraStatus, setCameraStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCoolingDown, setIsCoolingDown] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+
+  // Location selection states
+  const [selectedCenter, setSelectedCenter] = useState("");
+  const [selectedZone, setSelectedZone] = useState("");
+  const [isCustomCenter, setIsCustomCenter] = useState(false);
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const scannerId = "qr-reader-container";
@@ -102,7 +111,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
   }, []);
 
   const handleScanSuccess = (decodedText: string) => {
-    if (showModal || isCoolingDown || isSyncing) return;
+    if (showScanModal || showTransferModal || isCoolingDown || isSyncing) return;
 
     const trimmedText = decodedText.trim();
     setScannedResult(trimmedText);
@@ -113,7 +122,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
     );
 
     setFoundRow(match || null);
-    setShowModal(true);
+    setShowScanModal(true);
 
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       html5QrCodeRef.current.pause();
@@ -137,11 +146,11 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
       return row;
     }));
 
-    closeModal();
+    closeScanModal();
   };
 
-  const closeModal = () => {
-    setShowModal(false);
+  const closeScanModal = () => {
+    setShowScanModal(false);
     setScannedResult(null);
     setFoundRow(null);
     
@@ -155,15 +164,30 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
     }, 1500);
   };
 
-  const handleTransfer = async () => {
+  const handleOpenTransferModal = () => {
     if (auditHistory.length === 0) {
       alert("전송할 실사 데이터가 없습니다.");
+      return;
+    }
+    setShowTransferModal(true);
+  };
+
+  const handleConfirmTransfer = async () => {
+    if (!selectedCenter.trim() || !selectedZone.trim()) {
+      alert("센터 및 구역 위치를 모두 입력해 주세요.");
       return;
     }
 
     setIsSyncing(true);
     try {
-      const result = await syncAuditDataToCloud(serviceUrl, masterData, selectedSheet);
+      const result = await syncAuditDataToCloud(
+        serviceUrl, 
+        masterData, 
+        selectedSheet, 
+        selectedCenter, 
+        selectedZone
+      );
+      
       const now = new Date();
       setLastSyncTime(now.toLocaleTimeString());
 
@@ -172,12 +196,24 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
         [AUDIT_COLUMNS.STATUS]: row[AUDIT_COLUMNS.STATUS] === 'O' ? '' : row[AUDIT_COLUMNS.STATUS]
       })));
 
-      alert(`${result.count}건의 실사 결과가 전송되었습니다. 전송 목록이 초기화되었습니다.`);
+      alert(`${result.count}건의 데이터가 [${selectedCenter} / ${selectedZone}] 위치 정보와 함께 성공적으로 저장되었습니다.`);
+      setShowTransferModal(false);
     } catch (error) {
       console.error("Transfer error:", error);
-      alert("데이터 전송 중 오류가 발생했습니다.");
+      alert("데이터 전송 중 오류가 발생했습니다. 네트워크 연결을 확인하세요.");
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleCenterSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === "custom") {
+      setIsCustomCenter(true);
+      setSelectedCenter("");
+    } else {
+      setIsCustomCenter(false);
+      setSelectedCenter(val);
     }
   };
 
@@ -306,7 +342,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
           <div className="flex items-center gap-2 justify-center">
             <button
               type="button"
-              onClick={handleTransfer}
+              onClick={handleOpenTransferModal}
               disabled={auditHistory.length === 0 || isSyncing}
               className={`flex flex-1 justify-center items-center gap-2 px-8 py-4 rounded-2xl font-black transition-all shadow-xl active:scale-95 sm:flex-auto ${auditHistory.length > 0 && !isSyncing
                 ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200"
@@ -324,13 +360,14 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
         </div>
       </div>
 
-      {showModal && (
+      {/* Scan Success Confirmation Modal */}
+      {showScanModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-400">
             {foundRow ? (
               <>
                 <div className="bg-purple-600 p-10 text-white relative">
-                  <button onClick={closeModal} className="absolute top-8 right-8 p-2 hover:bg-white/20 rounded-full transition-colors">
+                  <button onClick={closeScanModal} className="absolute top-8 right-8 p-2 hover:bg-white/20 rounded-full transition-colors">
                     <X className="w-6 h-6" />
                   </button>
                   <div className="flex items-center gap-3 mb-4">
@@ -362,7 +399,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                   <div className="flex gap-4 pt-4">
                     <button
                       type="button"
-                      onClick={closeModal}
+                      onClick={closeScanModal}
                       className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-black py-5 rounded-3xl transition-all"
                     >
                       취소
@@ -387,13 +424,114 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                 <p className="text-sm text-gray-400 mb-12 leading-relaxed font-medium">현재 데이터베이스에 존재하지 않는<br />관리번호입니다.</p>
                 <button
                   type="button"
-                  onClick={closeModal}
+                  onClick={closeScanModal}
                   className="w-full bg-gray-900 text-white font-black py-6 rounded-3xl hover:bg-black transition-all shadow-2xl active:scale-95 text-xl"
                 >
                   닫기 및 재시도
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Location Info Modal */}
+      {showTransferModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-8 duration-400">
+            <div className="bg-blue-600 p-8 text-white relative">
+              <button onClick={() => setShowTransferModal(false)} className="absolute top-6 right-6 p-2 hover:bg-white/20 rounded-full transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-white/20 p-2 rounded-xl">
+                  <CloudUpload className="w-5 h-5" />
+                </div>
+                <h3 className="text-2xl font-black">실사 위치 정보</h3>
+              </div>
+              <p className="text-blue-100 text-sm font-medium">실사 데이터 {auditHistory.length}건을 서버로 전송합니다.<br/>현재 위치를 선택하거나 입력해 주세요.</p>
+            </div>
+
+            <div className="p-8 space-y-6">
+              <div className="space-y-5">
+                {/* Center Location Selection */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-blue-500" /> 센터 위치
+                  </label>
+                  {!isCustomCenter ? (
+                    <div className="relative group">
+                      <select 
+                        value={selectedCenter}
+                        onChange={handleCenterSelect}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 font-black text-gray-900 outline-none focus:ring-4 focus:ring-blue-100 transition-all appearance-none cursor-pointer"
+                      >
+                        <option value="">센터 선택</option>
+                        <option value="AJ_수도권_센터">AJ 수도권 센터</option>
+                        <option value="AJ_충청_센터">AJ 충청 센터</option>
+                        <option value="AJ_영남_센터">AJ 영남 센터</option>
+                        <option value="AJ_호남_센터">AJ 호남 센터</option>
+                        <option value="custom">+ 직접 입력</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none text-gray-400 group-hover:text-blue-500 transition-colors">
+                        <Plus className="w-4 h-4" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 animate-in slide-in-from-right-2">
+                      <input 
+                        type="text"
+                        autoFocus
+                        value={selectedCenter}
+                        onChange={(e) => setSelectedCenter(e.target.value)}
+                        placeholder="센터명을 직접 입력"
+                        className="flex-1 bg-white border-2 border-blue-200 rounded-2xl px-5 py-4 font-black text-gray-900 outline-none shadow-lg shadow-blue-50"
+                      />
+                      <button 
+                        onClick={() => { setIsCustomCenter(false); setSelectedCenter(""); }}
+                        className="p-4 bg-gray-100 text-gray-500 rounded-2xl hover:bg-gray-200"
+                        title="목록으로 돌아가기"
+                      >
+                        <RefreshCcw className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Zone Location Input */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                    <Navigation className="w-3 h-3 text-purple-500" /> 구역 위치
+                  </label>
+                  <input 
+                    type="text"
+                    value={selectedZone}
+                    onChange={(e) => setSelectedZone(e.target.value)}
+                    placeholder="예: A구역, 상차장, 2번창고 등"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 font-black text-gray-900 outline-none focus:ring-4 focus:ring-purple-100 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowTransferModal(false)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-black py-4 rounded-2xl transition-all"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmTransfer}
+                  disabled={isSyncing || !selectedCenter || !selectedZone}
+                  className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-100 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:bg-gray-300 disabled:shadow-none"
+                >
+                  {isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                  전송 및 저장
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

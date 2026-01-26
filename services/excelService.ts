@@ -122,7 +122,13 @@ export const syncChecklistToCloud = async (url: string, data: ChecklistData[], s
 /**
  * Sends audited data to Google Sheets.
  */
-export const syncAuditDataToCloud = async (url: string, data: MasterDataRow[], sheetName?: string): Promise<{ success: boolean; count: number }> => {
+export const syncAuditDataToCloud = async (
+  url: string, 
+  data: MasterDataRow[], 
+  sheetName?: string,
+  centerLocation?: string,
+  zoneLocation?: string
+): Promise<{ success: boolean; count: number }> => {
   const auditedItems = data.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
   
   if (auditedItems.length === 0) return { success: false, count: 0 };
@@ -141,6 +147,8 @@ export const syncAuditDataToCloud = async (url: string, data: MasterDataRow[], s
       "차대번호": String(row[MASTER_COLUMNS.SERIAL_NO] || "").trim(),
       "자산실사일": row[AUDIT_COLUMNS.DATE] || new Date().toLocaleDateString(),
       "자산실사 여부": "O",
+      "센터위치": centerLocation || "",
+      "구역위치": zoneLocation || "",
       "QR": "" 
     }))
   };
