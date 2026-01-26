@@ -18,7 +18,9 @@ import {
   MapPin,
   Navigation,
   Send,
-  Plus
+  Plus,
+  // Fix: changed 'Buildings' to 'Building' to resolve lucide-react export error
+  Building
 } from "lucide-react";
 import { MasterDataRow, MASTER_COLUMNS, AUDIT_COLUMNS } from "../types";
 import { syncAuditDataToCloud } from "../services/excelService";
@@ -50,6 +52,17 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const scannerId = "qr-reader-container";
   const SHARED_SHEET_URL = "https://docs.google.com/spreadsheets/d/1NXT2EBow1zWxmPsb7frN90e95qRH1mkY9DQUgCrsn2I/edit?usp=sharing";
+
+  // 주요 센터 목록
+  const CENTER_OPTIONS = [
+    { value: "AJ_인천_메인_센터", label: "AJ 인천 메인 센터" },
+    { value: "AJ_시흥_물류_센터", label: "AJ 시흥 물류 센터" },
+    { value: "AJ_이천_건설_센터", label: "AJ 이천 건설 센터" },
+    { value: "AJ_수도권_거점", label: "AJ 수도권 거점" },
+    { value: "AJ_충청_대전_센터", label: "AJ 충청 대전 센터" },
+    { value: "AJ_영남_부산_센터", label: "AJ 영남 부산 센터" },
+    { value: "AJ_호남_광주_센터", label: "AJ 호남 광주 센터" },
+  ];
 
   useEffect(() => {
     const audited = masterData.filter(row => row[AUDIT_COLUMNS.STATUS] === 'O');
@@ -191,16 +204,24 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
       const now = new Date();
       setLastSyncTime(now.toLocaleTimeString());
 
-      setMasterData(prev => prev.map(row => ({
-        ...row,
-        [AUDIT_COLUMNS.STATUS]: row[AUDIT_COLUMNS.STATUS] === 'O' ? '' : row[AUDIT_COLUMNS.STATUS]
-      })));
+      // 전송 성공 후 로컬 상태 초기화
+      setMasterData(prev => prev.map(row => {
+        if (row[AUDIT_COLUMNS.STATUS] === 'O') {
+          return {
+            ...row,
+            [AUDIT_COLUMNS.STATUS]: '',
+            [AUDIT_COLUMNS.CENTER]: selectedCenter,
+            [AUDIT_COLUMNS.ZONE]: selectedZone
+          };
+        }
+        return row;
+      }));
 
-      alert(`${result.count}건의 데이터가 [${selectedCenter} / ${selectedZone}] 위치 정보와 함께 성공적으로 저장되었습니다.`);
+      alert(`${result.count}건의 실사 결과가 [${selectedCenter} / ${selectedZone}] 정보와 함께 성공적으로 전송되었습니다.`);
       setShowTransferModal(false);
     } catch (error) {
       console.error("Transfer error:", error);
-      alert("데이터 전송 중 오류가 발생했습니다. 네트워크 연결을 확인하세요.");
+      alert("데이터 전송 중 오류가 발생했습니다. Apps Script 권한을 확인하세요.");
     } finally {
       setIsSyncing(false);
     }
@@ -240,7 +261,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
               </a>
               {lastSyncTime && (
                 <p className="text-[10px] text-green-600 font-black flex items-center gap-1">
-                  <Check className="w-3 h-3" /> 마지막 동기화: {lastSyncTime}
+                  <Check className="w-3 h-3" /> 마지막 전송: {lastSyncTime}
                 </p>
               )}
             </div>
@@ -254,16 +275,14 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
             <div className="p-5 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
               <span className="font-bold text-gray-700 flex items-center gap-2 text-sm uppercase tracking-wider">
                 <div className={`w-2 h-2 rounded-full ${cameraStatus === 'ready' ? (isCoolingDown ? 'bg-amber-500 animate-pulse' : 'bg-green-500') : cameraStatus === 'loading' ? 'bg-orange-500 animate-pulse' : 'bg-red-500'}`}></div>
-                Smart Scan
+                Smart Scan Mode
               </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={startScanner}
-                  className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors text-gray-500 flex items-center gap-1 text-xs font-bold"
-                >
-                  <RefreshCcw className={`w-4 h-4 ${cameraStatus === 'loading' ? 'animate-spin' : ''}`} /> 리셋
-                </button>
-              </div>
+              <button
+                onClick={startScanner}
+                className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors text-gray-500 flex items-center gap-1 text-xs font-bold"
+              >
+                <RefreshCcw className={`w-4 h-4 ${cameraStatus === 'loading' ? 'animate-spin' : ''}`} /> 리셋
+              </button>
             </div>
 
             <div className="p-4 bg-black min-h-[400px] flex items-center justify-center relative">
@@ -272,20 +291,20 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
               {cameraStatus === 'loading' && (
                 <div className="absolute inset-0 z-10 bg-gray-900 flex flex-col items-center justify-center text-white p-8">
                   <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-4" />
-                  <p className="font-bold text-sm">카메라 초기화 중...</p>
+                  <p className="font-bold text-sm">카메라 장치 연결 중...</p>
                 </div>
               )}
 
               {cameraStatus === 'error' && (
                 <div className="absolute inset-0 z-10 bg-gray-900 flex flex-col items-center justify-center text-white p-8 text-center">
                   <CameraOff className="w-16 h-16 text-red-500 mb-6 opacity-50" />
-                  <p className="font-bold text-lg mb-2">카메라 오류</p>
+                  <p className="font-bold text-lg mb-2">카메라를 사용할 수 없음</p>
                   <p className="text-xs text-gray-400 mb-6 leading-relaxed">{errorMessage}</p>
                   <button
                     onClick={startScanner}
                     className="bg-white text-black px-6 py-2.5 rounded-xl font-black text-sm hover:bg-gray-200 transition-all flex items-center gap-2"
                   >
-                    <Camera className="w-4 h-4" /> 권한 재요청 및 시작
+                    <Camera className="w-4 h-4" /> 다시 시도
                   </button>
                 </div>
               )}
@@ -296,7 +315,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                   ? "bg-amber-500 text-white border-amber-400 animate-pulse" 
                   : "text-white/80 bg-black/60 backdrop-blur-md border-white/10"
                 }`}>
-                  {isCoolingDown ? "다음 스캔 준비 중..." : "QR 코드를 사각형 안에 비춰주세요"}
+                  {isCoolingDown ? "잠시만 기다려주세요..." : "QR 코드를 사각형 안에 비춰주세요"}
                 </div>
               )}
             </div>
@@ -306,18 +325,18 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
         <div className="bg-white p-6 rounded-[2rem] shadow-2xl border border-gray-100 h-full min-h-[500px] flex flex-col justify-between">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-              <History className="w-5 h-5 text-purple-600" /> 전송 대기 중인 실사
+              <History className="w-5 h-5 text-purple-600" /> 실사 대기 목록
             </h3>
-            <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-[11px] font-black">
+            <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-[11px] font-black shadow-md shadow-purple-100">
               {auditHistory.length} 건
             </span>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar mb-6 max-h-[300px]">
+          <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar mb-6 max-h-[350px]">
             {auditHistory.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400 py-20 opacity-40">
                 <Package className="w-16 h-16 mb-4" />
-                <p className="text-sm font-bold">실사 내역이 없습니다</p>
+                <p className="text-sm font-bold">스캔된 항목이 없습니다</p>
               </div>
             ) : (
               auditHistory.map((row, idx) => (
@@ -328,39 +347,37 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                     </div>
                     <div>
                       <p className="text-sm font-black text-gray-900">{row[MASTER_COLUMNS.MGMT_NO]}</p>
-                      <p className="text-[11px] text-gray-500 truncate max-w-[150px] font-medium">{row[MASTER_COLUMNS.PROD_NAME]}</p>
+                      <p className="text-[11px] text-gray-500 truncate max-w-[150px] font-medium">{row[MASTER_COLUMNS.PROD_NAME] || '정보 없음'}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] font-black text-purple-400 uppercase tracking-tighter mb-0.5">Scanned</p>
                     <p className="text-xs font-black text-purple-700">{row[AUDIT_COLUMNS.DATE]}</p>
                   </div>
                 </div>
               ))
             )}
           </div>
-          <div className="flex items-center gap-2 justify-center">
-            <button
-              type="button"
-              onClick={handleOpenTransferModal}
-              disabled={auditHistory.length === 0 || isSyncing}
-              className={`flex flex-1 justify-center items-center gap-2 px-8 py-4 rounded-2xl font-black transition-all shadow-xl active:scale-95 sm:flex-auto ${auditHistory.length > 0 && !isSyncing
-                ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                }`}
-            >
-              {isSyncing ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <CloudUpload className="w-5 h-5" />
-              )}
-              실사 결과 일괄 전송
-            </button>
-          </div>
+          
+          <button
+            type="button"
+            onClick={handleOpenTransferModal}
+            disabled={auditHistory.length === 0 || isSyncing}
+            className={`w-full flex justify-center items-center gap-3 px-8 py-5 rounded-2xl font-black transition-all shadow-xl active:scale-95 ${auditHistory.length > 0 && !isSyncing
+              ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200"
+              : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
+              }`}
+          >
+            {isSyncing ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <CloudUpload className="w-6 h-6" />
+            )}
+            {isSyncing ? "데이터 전송 중..." : "실사 결과 일괄 전송"}
+          </button>
         </div>
       </div>
 
-      {/* Scan Success Confirmation Modal */}
+      {/* 스캔 성공 모달 */}
       {showScanModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-400">
@@ -372,9 +389,9 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                   </button>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="bg-white/20 p-2 rounded-xl">
-                      <ScanQrCode className="w-5 h-5" />
+                      <CheckCircle className="w-5 h-5" />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-purple-200">Asset Identifed</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-purple-200">Asset Found</span>
                   </div>
                   <h3 className="text-5xl font-black tracking-tighter leading-none">{foundRow[MASTER_COLUMNS.MGMT_NO]}</h3>
                 </div>
@@ -383,17 +400,17 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                   <div className="grid grid-cols-2 gap-5">
                     <div className="p-5 bg-gray-50 rounded-3xl border border-gray-100">
                       <span className="text-[10px] font-black text-gray-400 uppercase block mb-1 tracking-widest">자산번호</span>
-                      <p className="font-black text-gray-900">{foundRow[MASTER_COLUMNS.ASSET_NO] || '-'}</p>
+                      <p className="font-black text-gray-900 truncate">{foundRow[MASTER_COLUMNS.ASSET_NO] || '-'}</p>
                     </div>
                     <div className="p-5 bg-gray-50 rounded-3xl border border-gray-100">
                       <span className="text-[10px] font-black text-gray-400 uppercase block mb-1 tracking-widest">제조사</span>
-                      <p className="font-black text-gray-900">{foundRow[MASTER_COLUMNS.MANUFACTURER] || '-'}</p>
+                      <p className="font-black text-gray-900 truncate">{foundRow[MASTER_COLUMNS.MANUFACTURER] || '-'}</p>
                     </div>
                   </div>
 
                   <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
                     <span className="text-[10px] font-black text-gray-400 uppercase block mb-1 tracking-widest">상품 정보</span>
-                    <p className="font-black text-gray-900 text-xl leading-tight">{foundRow[MASTER_COLUMNS.PROD_NAME]}</p>
+                    <p className="font-black text-gray-900 text-xl leading-tight">{foundRow[MASTER_COLUMNS.PROD_NAME] || '정보 없음'}</p>
                   </div>
 
                   <div className="flex gap-4 pt-4">
@@ -416,18 +433,18 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
               </>
             ) : (
               <div className="p-16 text-center">
-                <div className="bg-red-50 w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-10 shadow-inner">
+                <div className="bg-red-50 w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-10">
                   <XCircle className="w-14 h-14 text-red-500" />
                 </div>
-                <h4 className="text-3xl font-black text-gray-900 mb-3 tracking-tight">자산 매칭 실패</h4>
-                <p className="text-gray-500 mb-2">코드: <span className="font-mono font-bold text-red-600 text-lg">{scannedResult}</span></p>
-                <p className="text-sm text-gray-400 mb-12 leading-relaxed font-medium">현재 데이터베이스에 존재하지 않는<br />관리번호입니다.</p>
+                <h4 className="text-3xl font-black text-gray-900 mb-3 tracking-tight">정보를 찾을 수 없음</h4>
+                <p className="text-gray-500 mb-2">스캔된 코드: <span className="font-mono font-bold text-red-600 text-lg">{scannedResult}</span></p>
+                <p className="text-sm text-gray-400 mb-12 leading-relaxed">마스터 데이터베이스에 등록되지 않은<br />관리번호 또는 자산번호입니다.</p>
                 <button
                   type="button"
                   onClick={closeScanModal}
                   className="w-full bg-gray-900 text-white font-black py-6 rounded-3xl hover:bg-black transition-all shadow-2xl active:scale-95 text-xl"
                 >
-                  닫기 및 재시도
+                  닫기
                 </button>
               </div>
             )}
@@ -435,7 +452,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
         </div>
       )}
 
-      {/* Transfer Location Info Modal */}
+      {/* 위치 정보 입력 모달 */}
       {showTransferModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-8 duration-400">
@@ -445,19 +462,20 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
               </button>
               <div className="flex items-center gap-3 mb-4">
                 <div className="bg-white/20 p-2 rounded-xl">
-                  <CloudUpload className="w-5 h-5" />
+                  <MapPin className="w-6 h-6" />
                 </div>
-                <h3 className="text-2xl font-black">실사 위치 정보</h3>
+                <h3 className="text-2xl font-black">실사 위치 선택</h3>
               </div>
-              <p className="text-blue-100 text-sm font-medium">실사 데이터 {auditHistory.length}건을 서버로 전송합니다.<br/>현재 위치를 선택하거나 입력해 주세요.</p>
+              <p className="text-blue-100 text-sm font-medium">데이터 전송 전 현재 위치를 선택해 주세요.</p>
             </div>
 
             <div className="p-8 space-y-6">
               <div className="space-y-5">
-                {/* Center Location Selection */}
+                {/* 센터 위치 선택 */}
                 <div className="space-y-2">
                   <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-blue-500" /> 센터 위치
+                    {/* Fix: changed 'Buildings' to 'Building' to resolve lucide-react export error */}
+                    <Building className="w-3 h-3 text-blue-500" /> 센터 정보
                   </label>
                   {!isCustomCenter ? (
                     <div className="relative group">
@@ -466,14 +484,13 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                         onChange={handleCenterSelect}
                         className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 font-black text-gray-900 outline-none focus:ring-4 focus:ring-blue-100 transition-all appearance-none cursor-pointer"
                       >
-                        <option value="">센터 선택</option>
-                        <option value="AJ_수도권_센터">AJ 수도권 센터</option>
-                        <option value="AJ_충청_센터">AJ 충청 센터</option>
-                        <option value="AJ_영남_센터">AJ 영남 센터</option>
-                        <option value="AJ_호남_센터">AJ 호남 센터</option>
-                        <option value="custom">+ 직접 입력</option>
+                        <option value="">센터를 선택하세요</option>
+                        {CENTER_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                        <option value="custom">+ 직접 입력하기</option>
                       </select>
-                      <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none text-gray-400 group-hover:text-blue-500 transition-colors">
+                      <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none text-gray-400">
                         <Plus className="w-4 h-4" />
                       </div>
                     </div>
@@ -484,13 +501,12 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                         autoFocus
                         value={selectedCenter}
                         onChange={(e) => setSelectedCenter(e.target.value)}
-                        placeholder="센터명을 직접 입력"
+                        placeholder="직접 입력 (예: 제주 지점)"
                         className="flex-1 bg-white border-2 border-blue-200 rounded-2xl px-5 py-4 font-black text-gray-900 outline-none shadow-lg shadow-blue-50"
                       />
                       <button 
                         onClick={() => { setIsCustomCenter(false); setSelectedCenter(""); }}
                         className="p-4 bg-gray-100 text-gray-500 rounded-2xl hover:bg-gray-200"
-                        title="목록으로 돌아가기"
                       >
                         <RefreshCcw className="w-5 h-5" />
                       </button>
@@ -498,16 +514,16 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                   )}
                 </div>
 
-                {/* Zone Location Input */}
+                {/* 구역 위치 입력 */}
                 <div className="space-y-2">
                   <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1">
-                    <Navigation className="w-3 h-3 text-purple-500" /> 구역 위치
+                    <Navigation className="w-3 h-3 text-purple-500" /> 세부 구역 정보
                   </label>
                   <input 
                     type="text"
                     value={selectedZone}
                     onChange={(e) => setSelectedZone(e.target.value)}
-                    placeholder="예: A구역, 상차장, 2번창고 등"
+                    placeholder="예: A-1 구역, 상차 대기장 등"
                     className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 font-black text-gray-900 outline-none focus:ring-4 focus:ring-purple-100 transition-all"
                   />
                 </div>
@@ -525,10 +541,10 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                   type="button"
                   onClick={handleConfirmTransfer}
                   disabled={isSyncing || !selectedCenter || !selectedZone}
-                  className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-100 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:bg-gray-300 disabled:shadow-none"
+                  className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-100 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
                 >
                   {isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                  전송 및 저장
+                  서버에 저장하기
                 </button>
               </div>
             </div>
