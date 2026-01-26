@@ -244,7 +244,7 @@ const HomePage: React.FC<HomePageProps> = ({
                         <Key className="w-3 h-3" /> 반드시 확인하세요!
                       </p>
                       <ul className="list-decimal list-inside space-y-1 text-gray-600 font-medium">
-                        <li><b>배포 > 새 배포</b>를 클릭합니다.</li>
+                        <li><b>배포 - 새 배포</b>를 클릭합니다.</li>
                         <li>유형은 <b>'웹 앱'</b>이어야 합니다.</li>
                         <li>액세스 권한은 <b>'모든 사용자(Anyone)'</b>로 설정해야 합니다.</li>
                         <li>스크립트 내 시트 이름이 <b>'마스터파일'</b>을 포함해야 합니다.</li>

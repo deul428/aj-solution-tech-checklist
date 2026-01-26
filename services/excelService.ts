@@ -7,7 +7,7 @@ import { MasterDataRow, ChecklistData, AUDIT_COLUMNS, MASTER_COLUMNS } from "../
 /**
  * 기본 구글 앱스 스크립트 배포 URL
  */
-export const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycby_0hhvIVYCXn1Rd-jiJSuCM6D_xWcSMOdO5-AqvK3it4KGiE-EkkMuu5daDDwULag/exec";
+export const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbx2zOXi5m8lOaIASIhueD3T0PuilkuJsIHOFUanUbgHGTLkVprBnv4-9E2xZj8664RK/exec";
 
 /**
  * Fetches the list of sheet names containing '마스터파일'
