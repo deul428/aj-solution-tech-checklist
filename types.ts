@@ -3,8 +3,8 @@ export interface MasterDataRow {
   [key: string]: any;
   '자산실사일'?: string;
   '자산실사 여부'?: string;
-  '센터위치'?: string;
-  '구역위치'?: string;
+  '자산실사 결과 센터위치'?: string;
+  '자산실사 결과 자산위치'?: string;
 }
 
 export interface ChecklistData {
@@ -19,11 +19,11 @@ export interface ChecklistData {
   vehicleNumber: string;
   serialNumber: string;
   category: '물류' | '건설' | null;
+  qrBase64?: string; // 클라우드 저장용 QR 이미지 데이터
 }
 
 /**
- * 시트 헤더의 키워드와 매칭되는 상수 정의
- * 시트의 실제 헤더 이름이 조금 달라도 포함 관계를 통해 찾을 수 있도록 GAS에서 처리합니다.
+ * 마스터파일(읽기전용)의 헤더 매핑
  */
 export const MASTER_COLUMNS = {
   MGMT_NO: '관리번호',
@@ -38,9 +38,32 @@ export const MASTER_COLUMNS = {
   EQUIP_STATUS: '장비상태'
 };
 
+/**
+ * 체크리스트_데이터(저장/업데이트용)의 헤더 매핑
+ */
+export const CHECKLIST_COLUMNS = {
+  MGMT_NO: '관리번호',
+  ASSET_NO: '자산번호',
+  PROD_CODE: '상품코드',
+  PROD_NAME: '상품명',
+  MANUFACTURER: '제조사',
+  MODEL: '모델',
+  YEAR: '년식',
+  VEHICLE_NO: '차량번호',
+  SERIAL_NO: '차대번호',
+  AUDIT_DATE: '자산실사일',
+  AUDIT_STATUS: '자산실사 여부',
+  QR: 'QR',
+  CENTER_LOC: '자산실사 결과 센터위치',
+  ASSET_LOC: '자산실사 결과 자산위치'
+};
+
+/**
+ * 자산 실사 데이터 업데이트를 위한 컬럼 매핑 (AuditPage에서 사용)
+ */
 export const AUDIT_COLUMNS = {
-  DATE: '자산실사일',
   STATUS: '자산실사 여부',
-  CENTER: '센터위치',
-  ZONE: '구역위치'
+  DATE: '자산실사일',
+  CENTER: '자산실사 결과 센터위치',
+  ZONE: '자산실사 결과 자산위치'
 };
