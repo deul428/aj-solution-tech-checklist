@@ -7,7 +7,7 @@ import { MasterDataRow, ChecklistData, CHECKLIST_COLUMNS, MASTER_COLUMNS } from 
 /**
  * 기본 구글 앱스 스크립트 배포 URL
  */
-export const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwpr8LAsekybKm-An8kRVB7VYJY9BFOOcoEAazyNPO-NFVeHajRVZALGBFNuPSlIC3o/exec";
+export const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzLSlqWo83K6quMdGomPaTpMoNuBztLkVhEiER0w17IgamUm7AZNc91tX2Z6wN7pYdd/exec";
 
 /**
  * 시트 목록 조회
