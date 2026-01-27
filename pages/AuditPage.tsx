@@ -82,7 +82,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
           rawData.forEach((row: any) => {
             const centerKey = Object.keys(row).find(k => k.includes("센터"));
             const zoneKey = Object.keys(row).find(k => k.includes("구역") || k.includes("위치"));
-            
+
             if (centerKey && row[centerKey]) {
               const c = String(row[centerKey]).trim();
               const z = zoneKey ? String(row[zoneKey] || "").trim() : "";
@@ -113,7 +113,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
     setCameraStatus('loading');
     setErrorMessage(null);
     if (html5QrCodeRef.current) {
-      try { if (html5QrCodeRef.current.isScanning) await html5QrCodeRef.current.stop(); } catch (e) {}
+      try { if (html5QrCodeRef.current.isScanning) await html5QrCodeRef.current.stop(); } catch (e) { }
     }
     const html5QrCode = new Html5Qrcode(scannerId);
     html5QrCodeRef.current = html5QrCode;
@@ -123,13 +123,13 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
       setCameraStatus('ready');
     } catch (err: any) {
       setCameraStatus('error');
-      setErrorMessage("카메라를 시작할 수 없습니다. PC 브라우저라면 '모의 스캔' 기능을 이용해 보세요.");
+      setErrorMessage("카메라를 시작할 수 없습니다. 카메라 사용 권한을 확인하세요.");
     }
   };
 
   useEffect(() => {
     startScanner();
-    return () => { if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) html5QrCodeRef.current.stop().catch(() => {}); };
+    return () => { if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) html5QrCodeRef.current.stop().catch(() => { }); };
   }, []);
 
   const handleScanSuccess = (decodedText: string) => {
@@ -221,7 +221,7 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
   // 선택된 센터의 구역 리스트를 안전하게 가져오기
   const zonesFromMapping = selectedCenter ? locationMapping[selectedCenter] : [];
   const availableZones = Array.isArray(zonesFromMapping) ? zonesFromMapping : [];
-  
+
   // 센터 옵션: numeric 옵션으로 1, 2, 10 순서 정렬
   const centerOptions = Object.keys(locationMapping)
     .filter(k => k && k !== "undefined" && k !== "null")
@@ -251,7 +251,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
                 <span className="font-bold text-gray-700 flex items-center gap-2 text-sm uppercase tracking-wider">
                   <div className={`w-2 h-2 rounded-full ${cameraStatus === 'ready' ? (isCoolingDown ? 'bg-amber-500 animate-pulse' : 'bg-green-500') : 'bg-red-500'}`}></div>Smart Scan Mode
                 </span>
-                <button onClick={handleMockScan} className="bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1 rounded-full text-[10px] font-black flex items-center gap-1.5 transition-all"><Beaker className="w-3.5 h-3.5" /> PC 테스트용 모의 스캔</button>
               </div>
               <button onClick={startScanner} className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors text-gray-500 flex items-center gap-1 text-xs font-bold"><RefreshCcw className="w-4 h-4" /> 리셋</button>
             </div>
@@ -260,7 +259,6 @@ const AuditPage: React.FC<AuditPageProps> = ({ masterData, setMasterData, servic
               {cameraStatus === 'error' && (
                 <div className="absolute inset-0 z-10 bg-gray-900 flex flex-col items-center justify-center text-white p-8 text-center">
                   <CameraOff className="w-16 h-16 text-red-500 mb-6 opacity-50" /><p className="font-bold text-lg mb-2">카메라 연결 불가</p><p className="text-xs text-gray-400 mb-6 leading-relaxed">{errorMessage}</p>
-                  <div className="flex gap-3"><button onClick={startScanner} className="bg-white text-black px-6 py-2.5 rounded-xl font-black text-sm hover:bg-gray-200 transition-all flex items-center gap-2"><Camera className="w-4 h-4" /> 다시 시도</button><button onClick={handleMockScan} className="bg-purple-600 text-white px-6 py-2.5 rounded-xl font-black text-sm hover:bg-purple-700 transition-all flex items-center gap-2 shadow-lg shadow-purple-900"><Beaker className="w-4 h-4" /> 모의 스캔</button></div>
                 </div>
               )}
             </div>

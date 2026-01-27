@@ -189,16 +189,7 @@ const HomePage: React.FC<HomePageProps> = ({
                     <span className="text-gray-500 text-sm font-bold">최근 동기화</span>
                     <span className="text-sm font-black text-blue-700 bg-white px-3 py-1 rounded-full border border-blue-100">{lastSyncTime || "방금 전"}</span>
                   </div>
-                </div>
-
-                <a 
-                  href={SHARED_SHEET_URL} 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="mt-8 w-full bg-white text-gray-700 font-black py-4 rounded-2xl border border-blue-100 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2 text-sm shadow-sm relative z-10"
-                >
-                  <ExternalLink className="w-4 h-4" /> 구글 스프레드시트 열기
-                </a>
+                </div> 
               </div>
             ) : (
               <div className="bg-red-50 rounded-3xl p-6 border border-red-100 text-center animate-in fade-in slide-in-from-bottom-2">
